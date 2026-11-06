@@ -163,6 +163,18 @@
     </div>
   </div>
 
+  <div class="host-config-bar" style="max-width: 960px; margin: 0 auto 16px auto; background: #0369a1; color: #fff; padding: 12px 20px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+    <div style="font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+      <span>📱 Phone Camera Destination URL:</span>
+    </div>
+    <div style="display: flex; gap: 8px; flex: 1; max-width: 520px;">
+      <input id="customHostInput" type="text" placeholder="https://fire-evac.vercel.app" style="flex: 1; padding: 7px 12px; border-radius: 6px; border: 1px solid #bae6fd; font-family: monospace; font-size: 12px; color: #0f172a; background: #fff;" />
+      <button id="btnUpdateBadges" style="background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; padding: 7px 14px; border-radius: 6px; font-weight: 800; font-size: 12px; cursor: pointer;">
+        Sync All Badges
+      </button>
+    </div>
+  </div>
+
   <div class="sheet-grid">
     
         <div class="qr-card" id="card_QR_G_ATRIUM">
@@ -661,5 +673,67 @@
         </div>
         
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const hostInput = document.getElementById("customHostInput");
+      const btnUpdate = document.getElementById("btnUpdateBadges");
+
+      // Auto-detect current host origin
+      let activeHost = window.location.origin;
+      if (!activeHost || activeHost === "null" || activeHost.startsWith("file:")) {
+        activeHost = "https://fire-evac.vercel.app";
+      }
+      hostInput.value = activeHost;
+
+      async function syncBadgesToHost(targetHost) {
+        const cleanHost = targetHost.replace(/\/+$/, "");
+        const cards = document.querySelectorAll(".qr-card");
+
+        for (const card of cards) {
+          const codeId = card.id.replace("card_", "");
+          const targetUrl = `${cleanHost}/public?qr=${codeId}`;
+
+          const link = card.querySelector(".meta-footer a");
+          if (link) {
+            link.href = targetUrl;
+            link.textContent = targetUrl;
+          }
+
+          const testBtn = card.querySelector(".test-btn");
+          if (testBtn && !testBtn.classList.contains("download-btn")) {
+            testBtn.href = targetUrl;
+          }
+
+          try {
+            const svgResp = await fetch(`/api/qr/image/${codeId}?base_url=${encodeURIComponent(cleanHost)}&format=svg`);
+            if (svgResp.ok) {
+              const svgText = await svgResp.text();
+              const svgWrap = card.querySelector(".qr-svg-wrap");
+              if (svgWrap && svgText.includes("<svg")) {
+                svgWrap.innerHTML = svgText;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      // If running live on Vercel or custom domain, auto-update badges immediately
+      if (!window.location.origin.includes("localhost:5000") && window.location.origin.startsWith("http")) {
+        syncBadgesToHost(window.location.origin);
+      }
+
+      btnUpdate.addEventListener("click", () => {
+        const customVal = hostInput.value.trim();
+        if (customVal) {
+          btnUpdate.textContent = "Updating...";
+          syncBadgesToHost(customVal).then(() => {
+            btnUpdate.textContent = "✓ Badges Synced";
+            setTimeout(() => { btnUpdate.textContent = "Sync All Badges"; }, 2000);
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>

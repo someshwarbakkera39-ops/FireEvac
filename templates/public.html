@@ -468,12 +468,40 @@
 
       // Centralized Scan & Localization Handler
       async function registerAndResolveQr(codeId) {
+        // Clean string (extract parameter if full URL was scanned)
+        let cleanCode = codeId;
+        if (typeof codeId === "string") {
+          if (codeId.includes("?qr=")) {
+            cleanCode = codeId.split("?qr=")[1].split("&")[0];
+          } else if (codeId.includes("/qr/")) {
+            cleanCode = codeId.split("/qr/")[1].split("?")[0];
+          }
+        }
+
+        const fallbackQR = {
+          "QR_G_ATRIUM": { floor: 0, node_id: "NODE_LOBBY_SOUTH", label: "Central Atrium Portal" },
+          "QR_G_ADMIN": { floor: 0, node_id: "NODE_ROOM_G_01", label: "Admin & Accounts G-101" },
+          "QR_G_CAFE": { floor: 0, node_id: "NODE_ROOM_G_06", label: "Cafeteria G-106" },
+          "QR_1_FACULTY": { floor: 1, node_id: "NODE_ROOM_1_01", label: "Faculty Dept 101" },
+          "QR_1_CSLAB": { floor: 1, node_id: "NODE_ROOM_1_06", label: "CS Software Lab 106" },
+          "QR_1_BRIDGE": { floor: 1, node_id: "N1_C_CENTER", label: "Skybridge Center" },
+          "QR_2_LECTURE": { floor: 2, node_id: "NODE_ROOM_2_01", label: "Lecture Theater 201" },
+          "QR_2_SEMINAR": { floor: 2, node_id: "NODE_ROOM_2_06", label: "Seminar Hall 206" },
+          "QR_2_STAIR_A": { floor: 2, node_id: "STAIR_A_2", label: "West Staircase A L2" },
+          "QR_2_STAIR_B": { floor: 2, node_id: "STAIR_B_2", label: "East Staircase B L2" },
+          "QR_3_LIBRARY": { floor: 3, node_id: "NODE_ROOM_3_01", label: "Digital Central Library 301" },
+          "QR_3_AILAB": { floor: 3, node_id: "NODE_ROOM_3_05", label: "AI & Robotics Lab 305" },
+          "QR_3_HPC": { floor: 3, node_id: "NODE_ROOM_3_06", label: "Supercomputing Center 306" },
+          "QR_4_BOARDROOM": { floor: 4, node_id: "NODE_ROOM_4_01", label: "Executive Boardroom 401" },
+          "QR_4_AUDITORIUM": { floor: 4, node_id: "NODE_ROOM_4_06", label: "Grand Auditorium 406" }
+        };
+
         try {
           const resp = await fetch("/api/occupancy/scan", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              qr_code: codeId,
+              qr_code: cleanCode,
               occupant_id: occupantId
             })
           });
@@ -504,11 +532,20 @@
             btnMarkEvacuated.disabled = false;
             btnMarkEvacuated.textContent = "✓ I Have Safely Evacuated";
             btnMarkEvacuated.style.background = "#16a34a";
-          } else {
-            alert(json.message || "Failed to resolve QR checkpoint.");
+            return;
           }
         } catch (e) {
-          console.error("Scan error", e);
+          console.warn("Scan API request error, utilizing client-side resolver:", e);
+        }
+
+        // Resilient fallback if server is cold-starting or disconnected
+        if (fallbackQR[cleanCode]) {
+          const loc = fallbackQR[cleanCode];
+          startNodeId = loc.node_id;
+          currentFloor = loc.floor;
+          pubCurrentLocationLbl.textContent = `${loc.label} (Level ${loc.floor})`;
+          pubFloorBadge.textContent = `LEVEL ${loc.floor}`;
+          updateFloorUI(currentFloor);
           fallbackClientRoute();
         }
       }
@@ -573,8 +610,21 @@
       });
 
       // Modal Controls
-      document.getElementById("btnActionQr").addEventListener("click", () => {
-        document.getElementById("modalQrScanner").style.display = "flex";
+      document.getElementById("btnActionQr").addEventListener("click", async () => {
+        const modal = document.getElementById("modalQrScanner");
+        modal.style.display = "flex";
+        const videoElem = document.getElementById("qrCameraFeed");
+        const placeholder = document.getElementById("qrCameraPlaceholder");
+
+        const ok = await qrScanner.startCamera("qrCameraFeed", async (codeId) => {
+          modal.style.display = "none";
+          await registerAndResolveQr(codeId);
+        });
+
+        if (ok && videoElem) {
+          videoElem.style.display = "block";
+          if (placeholder) placeholder.style.display = "none";
+        }
       });
       document.getElementById("btnCloseQrModal").addEventListener("click", () => {
         document.getElementById("modalQrScanner").style.display = "none";
@@ -583,8 +633,9 @@
 
       document.getElementById("btnConfirmQrScan").addEventListener("click", async () => {
         const selectedCode = document.getElementById("modalQrSelect").value;
-        await registerAndResolveQr(selectedCode);
+        qrScanner.stopCamera();
         document.getElementById("modalQrScanner").style.display = "none";
+        await registerAndResolveQr(selectedCode);
       });
 
       document.getElementById("btnActionGps").addEventListener("click", () => {
