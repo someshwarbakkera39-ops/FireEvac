@@ -13,3 +13,4 @@ if root_dir not in sys.path:
 
 # Import Flask WSGI application instance
 from app import app
+
