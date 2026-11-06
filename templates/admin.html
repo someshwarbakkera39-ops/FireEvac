@@ -411,44 +411,91 @@
       // Canvas Point-and-Click Handler
       const svgElem = document.getElementById("buildingSvg");
       svgElem.addEventListener("click", (e) => {
-        if (renderer.isPanning) return;
-        const rect = svgElem.getBoundingClientRect();
-        const clickX = (e.clientX - rect.left - renderer.panX) / renderer.zoom;
-        const clickY = (e.clientY - rect.top - renderer.panY) / renderer.zoom;
-
-        if (clickX >= 80 && clickX <= 1120 && clickY >= 100 && clickY <= 650) {
-          handleCanvasPointClick(Math.round(clickX), Math.round(clickY), currentFloor, `Point (${Math.round(clickX)}, ${Math.round(clickY)})`);
-        }
+        if (renderer.hasDragged) return;
+        const coords = renderer.getSvgCoordinates(e.clientX, e.clientY);
+        handleCanvasPointClick(coords.x, coords.y, currentFloor, `Level ${currentFloor} (${coords.x}, ${coords.y})`);
       });
 
       async function handleCanvasPointClick(x, y, floorLevel, label) {
         if (activeToolMode === "inspect") {
-          const haz = activeHazards.find(h => h.floor_id === floorLevel && Math.hypot(h.location_x - x, h.location_y - y) <= (h.radius || 50));
-          if (haz) {
-            await fetch(`/api/hazards/${haz.id}`, { method: "DELETE" });
-            await syncHazardsFromDb();
+          const hazIndex = activeHazards.findIndex(h => 
+            parseInt(h.floor_id, 10) === floorLevel && 
+            Math.hypot(parseFloat(h.location_x) - x, parseFloat(h.location_y) - y) <= (parseFloat(h.radius) || 50)
+          );
+
+          if (hazIndex !== -1) {
+            const haz = activeHazards[hazIndex];
+            activeHazards.splice(hazIndex, 1);
+            syncHazardsState();
+
+            if (haz.id && !String(haz.id).startsWith("temp_")) {
+              try {
+                await fetch(`/api/hazards/${haz.id}`, { method: "DELETE" });
+              } catch (e) {}
+            }
           }
           return;
         }
 
-        const payload = {
+        const newHazard = {
+          id: "temp_" + Date.now(),
           floor_id: floorLevel,
           location_x: x,
           location_y: y,
           type: activeToolMode === "barrier" ? "structural_blockage" : activeToolMode,
           radius: activeToolMode === "smoke" ? 60 : 45,
+          severity: "high",
           description: `Point-and-click placed ${activeToolMode} at ${label}`
         };
 
+        // Instant optimistic feedback on the Digital Twin canvas
+        activeHazards.push(newHazard);
+        syncHazardsState();
+
+        // Asynchronously persist to SQLite database
         try {
-          await fetch("/api/hazards", {
+          const resp = await fetch("/api/hazards", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(newHazard)
           });
-          await syncHazardsFromDb();
+          const json = await resp.json();
+          if (json.status === "success" && json.hazard_id) {
+            newHazard.id = json.hazard_id;
+          }
         } catch (e) {
-          console.error("Failed to place hazard", e);
+          console.warn("Hazard database save note (rendered in active session):", e);
+        }
+      }
+
+      // Synchronize internal hazard state and render visual markers
+      function syncHazardsState() {
+        adminActiveHazards.textContent = activeHazards.length;
+        blockedNodes.clear();
+
+        activeHazards.forEach(h => {
+          if (graphData && graphData.nodes) {
+            const hx = parseFloat(h.location_x);
+            const hy = parseFloat(h.location_y);
+            const hFloor = parseInt(h.floor_id, 10);
+            const hRadius = parseFloat(h.radius) || 45;
+
+            for (const nid in graphData.nodes) {
+              const n = graphData.nodes[nid];
+              if (parseInt(n.floor, 10) === hFloor) {
+                if (Math.hypot(n.x - hx, n.y - hy) <= hRadius) {
+                  blockedNodes.add(nid);
+                }
+              }
+            }
+          }
+        });
+
+        renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges), activeHazards);
+        previewAdminRoute();
+
+        if (drillSim && drillSim.isRunning) {
+          drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
         }
       }
 
@@ -457,33 +504,15 @@
         try {
           const resp = await fetch("/api/hazards");
           const json = await resp.json();
-          activeHazards = json.hazards || [];
-          adminActiveHazards.textContent = activeHazards.length;
-
-          // Block nodes within hazard radius
-          blockedNodes.clear();
-          activeHazards.forEach(h => {
-            if (graphData) {
-              for (const nid in graphData.nodes) {
-                const n = graphData.nodes[nid];
-                if (n.floor === h.floor_id) {
-                  if (Math.hypot(n.x - h.location_x, n.y - h.location_y) <= (h.radius || 45)) {
-                    blockedNodes.add(nid);
-                  }
-                }
-              }
-            }
-          });
-
-          renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
-          previewAdminRoute();
-
-          // Inform live simulation engine about new hazards for mid-flight rerouting
-          if (drillSim && drillSim.isRunning) {
-            drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
+          if (json.status === "success" && Array.isArray(json.hazards)) {
+            // Keep any locally created hazards not yet synced
+            const unsynced = activeHazards.filter(h => String(h.id).startsWith("temp_"));
+            activeHazards = [...json.hazards, ...unsynced];
           }
+          syncHazardsState();
         } catch (e) {
           console.warn("Sync hazards fallback", e);
+          syncHazardsState();
         }
       }
 

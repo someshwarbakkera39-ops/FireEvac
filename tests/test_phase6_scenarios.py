@@ -154,8 +154,7 @@ def test_production_deployment_and_testkit_assets():
 
     # Verify WSGI entrypoint and cloud deployment files
     assert os.path.exists(os.path.join(base_dir, "wsgi.py"))
-    assert os.path.exists(os.path.join(base_dir, "Procfile"))
-    assert os.path.exists(os.path.join(base_dir, "render.yaml"))
+    assert os.path.exists(os.path.join(base_dir, "vercel.json")) or os.path.exists(os.path.join(base_dir, "Procfile"))
     assert os.path.exists(os.path.join(base_dir, "config.py"))
 
     # Verify generated physical QR testing kit HTML

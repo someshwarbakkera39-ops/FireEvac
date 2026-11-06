@@ -40,8 +40,13 @@ class FloorMapRenderer {
     this.graphData = null;          // Holds graph model {nodes, edges}
     this.blockedEdges = new Set();  // "u--v"
     this.blockedNodes = new Set();  // "node_id"
+    this.rawHazards = [];           // Array of {id, floor_id, location_x, location_y, type, radius}
     this.startNode = null;          // node_id
     this.simOccupants = [];         // Active drill occupants
+    this.hasDragged = false;
+    this.isMouseDown = false;
+    this.downClientX = 0;
+    this.downClientY = 0;
 
     this.init();
   }
@@ -142,24 +147,30 @@ class FloorMapRenderer {
     // Pan with mouse drag
     this.svg.addEventListener("mousedown", (e) => {
       if (e.button !== 0) return;
-      this.isPanning = true;
+      this.isMouseDown = true;
+      this.hasDragged = false;
+      this.downClientX = e.clientX;
+      this.downClientY = e.clientY;
       this.startX = e.clientX - this.panX;
       this.startY = e.clientY - this.panY;
-      this.svg.style.cursor = "grabbing";
     });
 
     window.addEventListener("mousemove", (e) => {
-      if (!this.isPanning) return;
-      this.panX = e.clientX - this.startX;
-      this.panY = e.clientY - this.startY;
-      this.updateTransform();
+      if (!this.isMouseDown) return;
+      if (Math.hypot(e.clientX - this.downClientX, e.clientY - this.downClientY) > 5) {
+        this.hasDragged = true;
+        this.isPanning = true;
+        this.svg.style.cursor = "grabbing";
+        this.panX = e.clientX - this.startX;
+        this.panY = e.clientY - this.startY;
+        this.updateTransform();
+      }
     });
 
     window.addEventListener("mouseup", () => {
-      if (this.isPanning) {
-        this.isPanning = false;
-        this.svg.style.cursor = "grab";
-      }
+      this.isMouseDown = false;
+      this.isPanning = false;
+      this.svg.style.cursor = "grab";
     });
 
     // Touch support
@@ -229,10 +240,44 @@ class FloorMapRenderer {
     this.render();
   }
 
-  setHazards(blockedNodes = [], blockedEdges = []) {
+  setHazards(blockedNodes = [], blockedEdges = [], rawHazards = []) {
     this.blockedNodes = new Set(blockedNodes);
     this.blockedEdges = new Set(blockedEdges);
+    this.rawHazards = rawHazards || [];
     this.render();
+  }
+
+  getSvgCoordinates(clientX, clientY) {
+    if (this.svg) {
+      try {
+        const pt = this.svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        const target = this.viewportGroup || this.svg;
+        const ctm = target.getScreenCTM();
+        if (ctm) {
+          const transformed = pt.matrixTransform(ctm.inverse());
+          return {
+            x: Math.round(transformed.x),
+            y: Math.round(transformed.y)
+          };
+        }
+      } catch (err) {}
+
+      // Fallback calculation using bounding client rect & viewBox
+      const rect = this.svg.getBoundingClientRect();
+      const svgW = 1200;
+      const svgH = 750;
+      const scaleX = svgW / (rect.width || 1);
+      const scaleY = svgH / (rect.height || 1);
+      const relX = (clientX - rect.left) * scaleX;
+      const relY = (clientY - rect.top) * scaleY;
+      return {
+        x: Math.round((relX - this.panX) / this.zoom),
+        y: Math.round((relY - this.panY) / this.zoom)
+      };
+    }
+    return { x: 600, y: 375 };
   }
 
   toggleLayer(layerKey, isVisible) {
@@ -551,6 +596,52 @@ class FloorMapRenderer {
                 <text x="${n.x}" y="${n.y + 4}" fill="#ffffff" font-size="9" font-weight="900" text-anchor="middle">🔥</text>
               </g>
             `;
+          }
+        });
+      }
+
+      // 8B. Render all point-and-click placed hazards on current floor
+      if (this.rawHazards && this.rawHazards.length > 0) {
+        this.rawHazards.forEach(h => {
+          if (parseInt(h.floor_id, 10) === this.currentFloor) {
+            const rad = parseFloat(h.radius) || 45;
+            const hx = parseFloat(h.location_x);
+            const hy = parseFloat(h.location_y);
+            const type = (h.type || "fire").toLowerCase();
+
+            if (type.includes("smoke")) {
+              // Dense Smoke Hazard
+              hazHtml += `
+                <g class="hazard-placed-marker" data-id="${h.id || ''}" style="cursor:pointer;">
+                  <circle cx="${hx}" cy="${hy}" r="${rad}" fill="rgba(100, 116, 139, 0.45)" stroke="#64748b" stroke-dasharray="4,4" stroke-width="2">
+                    <animate attributeName="r" values="${rad * 0.9};${rad * 1.1};${rad * 0.9}" dur="2s" repeatCount="indefinite"/>
+                  </circle>
+                  <circle cx="${hx}" cy="${hy}" r="15" fill="#334155" stroke="#f8fafc" stroke-width="2"/>
+                  <text x="${hx}" y="${hy + 5}" fill="#ffffff" font-size="12" text-anchor="middle">💨</text>
+                </g>
+              `;
+            } else if (type.includes("barri") || type.includes("block")) {
+              // Barricade Obstacle
+              hazHtml += `
+                <g class="hazard-placed-marker" data-id="${h.id || ''}" style="cursor:pointer;">
+                  <circle cx="${hx}" cy="${hy}" r="${rad * 0.75}" fill="rgba(217, 119, 6, 0.35)" stroke="#d97706" stroke-width="2.5"/>
+                  <rect x="${hx - 15}" y="${hy - 12}" width="30" height="24" rx="4" fill="#d97706" stroke="#ffffff" stroke-width="1.5"/>
+                  <text x="${hx}" y="${hy + 5}" fill="#ffffff" font-size="13" text-anchor="middle">🚧</text>
+                </g>
+              `;
+            } else {
+              // Fire Hazard
+              hazHtml += `
+                <g class="hazard-placed-marker" data-id="${h.id || ''}" style="cursor:pointer;">
+                  <circle cx="${hx}" cy="${hy}" r="${rad}" fill="rgba(220, 38, 38, 0.35)" stroke="#dc2626" stroke-width="3">
+                    <animate attributeName="r" values="${rad * 0.85};${rad * 1.15};${rad * 0.85}" dur="1s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1s" repeatCount="indefinite"/>
+                  </circle>
+                  <circle cx="${hx}" cy="${hy}" r="15" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
+                  <text x="${hx}" y="${hy + 5}" fill="#ffffff" font-size="12" text-anchor="middle">🔥</text>
+                </g>
+              `;
+            }
           }
         });
       }
