@@ -288,6 +288,31 @@
     <!-- Hidden file input for photo/image upload fallback -->
     <input type="file" id="qrPhotoInput" accept="image/*" capture="environment" style="display: none;" />
 
+    <!-- Nearest QR Checkpoint Banner -->
+    <div id="nearestQrBanner" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid #38bdf8; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.15); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+      <div style="flex: 1; min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 13px;">🎯</span>
+          <span style="font-size: 10.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px;">Nearest QR Checkpoint</span>
+          <span id="nearestQrDistBadge" style="font-size: 9.5px; font-weight: 800; background: #0284c7; color: #fff; padding: 1px 6px; border-radius: 9999px;">0m</span>
+        </div>
+        <div id="nearestQrName" style="font-size: 13px; font-weight: 800; color: #f8fafc; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          AI & Robotics Lab 305
+        </div>
+        <div id="nearestQrDesc" style="font-size: 10px; color: #94a3b8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          Wall marker outside room · Floor Level 3
+        </div>
+      </div>
+      <div style="display: flex; gap: 5px; flex-shrink: 0;">
+        <button id="btnScanNearestDirectly" title="Quick-scan this nearest marker" style="background: #16a34a; color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.4);">
+          <span>📷</span> Scan
+        </button>
+        <button id="btnViewNearestDirectly" title="Show QR on screen for 2nd phone" style="background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 6px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+          <span>📱</span> QR
+        </button>
+      </div>
+    </div>
+
     <!-- Quick Checkpoint Chips for Active Floor -->
     <div style="margin-bottom: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -321,7 +346,7 @@
   <footer class="mobile-guidance-card">
     <div class="metric-badge">
       <div>
-        <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Nearest Safe Exit:</div>
+        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">Nearest Safe Exit:</div>
         <div style="font-size: 13px; font-weight: 800; color: #16a34a;" id="pubSafeExitLbl">East Wing Fire Exit 3</div>
       </div>
       <div style="text-align: right;">
@@ -330,14 +355,55 @@
       </div>
     </div>
 
-    <!-- Live Step Directive Hero -->
-    <div class="instruction-hero" id="pubInstructionHero">
-      <h3 id="pubStepTitle">Step 1: Exit AI Lab 305 into Corridor</h3>
-      <p id="pubStepDesc">Step out through door into North Hallway. Turn Left and proceed toward Staircase B.</p>
+    <!-- Live Step Directive Hero with Directional Icon & Navigation Controls -->
+    <div class="instruction-hero" id="pubInstructionHero" style="position: relative; transition: all 0.25s ease;">
+      <!-- Step Header with Maneuver Icon & Segment Distance -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- Visual Directional Maneuver Badge -->
+          <div id="pubManeuverIcon" style="width: 38px; height: 38px; border-radius: 8px; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35); flex-shrink: 0;">
+            ⬆️
+          </div>
+          <div>
+            <div id="pubStepBadge" style="font-size: 10px; font-weight: 800; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px;">
+              STEP 1 OF 4
+            </div>
+            <div id="pubStepDistance" style="font-size: 11px; font-weight: 700; color: #0284c7;">
+              In 18m
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Step Cycler Buttons -->
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button id="btnPrevNavStep" title="Previous navigation step" style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; font-weight: 800; cursor: pointer; color: #334155; display: flex; align-items: center; justify-content: center; font-size: 11px;">
+            ◀
+          </button>
+          <span id="pubStepProgressLbl" style="font-size: 10px; font-weight: 700; color: #64748b; min-width: 36px; text-align: center;">
+            1/4
+          </span>
+          <button id="btnNextNavStep" title="Next navigation step" style="width: 28px; height: 28px; border-radius: 6px; background: #2563eb; border: none; font-weight: 800; cursor: pointer; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);">
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- Instruction Title & Text -->
+      <h3 id="pubStepTitle" style="margin: 0; font-size: 13.5px; font-weight: 800; color: #0f172a; line-height: 1.3;">
+        Step 1: Exit AI Lab 305 into Corridor
+      </h3>
+      <p id="pubStepDesc" style="margin: 4px 0 0 0; font-size: 11.5px; color: #475569; line-height: 1.4;">
+        Step out through door into North Hallway. Turn Left and proceed toward Staircase B.
+      </p>
+
+      <!-- Next Step Preview Hint -->
+      <div id="pubNextStepHint" style="font-size: 10.5px; color: #64748b; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 4px;">
+        <span>Next:</span> <span id="pubNextStepHintText" style="font-weight: 700; color: #1e293b;">⬅️ Turn Left onto Staircase B</span>
+      </div>
     </div>
 
-    <div style="display: flex; gap: 8px;">
-      <button id="btnMarkEvacuated" style="flex: 1; background: #16a34a; border: 1px solid #15803d; color: #fff; padding: 12px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer;">
+    <div style="display: flex; gap: 8px; margin-top: 10px;">
+      <button id="btnMarkEvacuated" style="flex: 1; background: #16a34a; border: 1px solid #15803d; color: #fff; padding: 12px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);">
         ✓ I Have Safely Evacuated
       </button>
       <button id="btnRecalculatePublic" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
@@ -646,6 +712,108 @@
       const chipsFloorNum = document.getElementById("chipsFloorNum");
       const floorQrChipsContainer = document.getElementById("floorQrChipsContainer");
 
+      // Turn-by-Turn Maneuver Navigation Elements
+      let currentNavInstructions = [];
+      let currentNavStepIndex = 0;
+      const pubManeuverIcon = document.getElementById("pubManeuverIcon");
+      const pubStepBadge = document.getElementById("pubStepBadge");
+      const pubStepDistance = document.getElementById("pubStepDistance");
+      const pubStepProgressLbl = document.getElementById("pubStepProgressLbl");
+      const pubNextStepHintText = document.getElementById("pubNextStepHintText");
+      const btnPrevNavStep = document.getElementById("btnPrevNavStep");
+      const btnNextNavStep = document.getElementById("btnNextNavStep");
+      const pubInstructionHero = document.getElementById("pubInstructionHero");
+
+      function renderNavStep(idx) {
+        if (!currentNavInstructions || currentNavInstructions.length === 0) return;
+        if (idx < 0) idx = 0;
+        if (idx >= currentNavInstructions.length) idx = currentNavInstructions.length - 1;
+        currentNavStepIndex = idx;
+
+        const instr = currentNavInstructions[idx];
+        const total = currentNavInstructions.length;
+
+        // Maneuver icon & semantic theme color
+        const m = instr.maneuver || "straight";
+        let icon = instr.icon || "⬆️";
+        let bg = "#16a34a"; // Green default for straight
+        let borderCol = "#16a34a";
+
+        if (m === "left" || m === "right") {
+          bg = "#2563eb";
+          borderCol = "#2563eb";
+        } else if (m === "uturn") {
+          bg = "#ea580c";
+          borderCol = "#ea580c";
+        } else if (m === "descend") {
+          bg = "#7c3aed";
+          borderCol = "#7c3aed";
+        } else if (m === "exit" || m === "safe") {
+          bg = "#059669";
+          borderCol = "#059669";
+        }
+
+        if (pubManeuverIcon) {
+          pubManeuverIcon.textContent = icon;
+          pubManeuverIcon.style.background = bg;
+          pubManeuverIcon.style.boxShadow = `0 2px 8px ${bg}55`;
+        }
+        if (pubInstructionHero) {
+          pubInstructionHero.style.borderLeftColor = borderCol;
+        }
+        if (pubStepBadge) {
+          pubStepBadge.textContent = `STEP ${idx + 1} OF ${total}`;
+          pubStepBadge.style.color = borderCol;
+        }
+        if (pubStepDistance) {
+          if (idx === 0) {
+            pubStepDistance.textContent = "Start Point";
+          } else if (instr.distance_meters > 0) {
+            pubStepDistance.textContent = `In ${instr.distance_meters}m`;
+          } else {
+            pubStepDistance.textContent = "Destination";
+          }
+        }
+        if (pubStepTitle) pubStepTitle.textContent = instr.title || `Step ${idx + 1}`;
+        if (pubStepDesc) pubStepDesc.textContent = instr.text || "";
+        if (pubStepProgressLbl) pubStepProgressLbl.textContent = `${idx + 1}/${total}`;
+
+        if (btnPrevNavStep) {
+          btnPrevNavStep.disabled = idx === 0;
+          btnPrevNavStep.style.opacity = idx === 0 ? "0.35" : "1";
+          btnPrevNavStep.style.cursor = idx === 0 ? "not-allowed" : "pointer";
+        }
+        if (btnNextNavStep) {
+          btnNextNavStep.disabled = idx === total - 1;
+          btnNextNavStep.style.opacity = idx === total - 1 ? "0.35" : "1";
+          btnNextNavStep.style.cursor = idx === total - 1 ? "not-allowed" : "pointer";
+        }
+
+        if (pubNextStepHintText) {
+          if (idx + 1 < total) {
+            const nextInstr = currentNavInstructions[idx + 1];
+            pubNextStepHintText.textContent = `${nextInstr.icon || '➡️'} ${nextInstr.title}`;
+          } else {
+            pubNextStepHintText.textContent = "🎯 Designated Outdoor Assembly Zone";
+          }
+        }
+
+        if (instr.floor !== undefined && instr.floor !== currentFloor) {
+          updateFloorUI(instr.floor);
+        }
+      }
+
+      if (btnPrevNavStep) {
+        btnPrevNavStep.addEventListener("click", () => {
+          if (currentNavStepIndex > 0) renderNavStep(currentNavStepIndex - 1);
+        });
+      }
+      if (btnNextNavStep) {
+        btnNextNavStep.addEventListener("click", () => {
+          if (currentNavStepIndex < currentNavInstructions.length - 1) renderNavStep(currentNavStepIndex + 1);
+        });
+      }
+
       function updateFloorUI(fl) {
         currentFloor = parseInt(fl, 10);
         renderer.setFloor(currentFloor);
@@ -693,6 +861,74 @@
         } catch (e) {}
       }
 
+      // Calculate Distances to All Checkpoints & Highlight Nearest
+      function updateNearestQrAndNearbyLocations() {
+        if (!allQrCodes || allQrCodes.length === 0) return;
+
+        let currX = 0, currY = 0, currFloor = currentFloor;
+        if (graphData && graphData.nodes && graphData.nodes[startNodeId]) {
+          const node = graphData.nodes[startNodeId];
+          currX = node.x;
+          currY = node.y;
+          currFloor = node.floor !== undefined ? node.floor : currentFloor;
+        }
+
+        allQrCodes.forEach(q => {
+          let qx = q.x_coord !== undefined ? q.x_coord : (graphData?.nodes?.[q.node_id]?.x ?? 0);
+          let qy = q.y_coord !== undefined ? q.y_coord : (graphData?.nodes?.[q.node_id]?.y ?? 0);
+          let qFloor = parseInt(q.floor_id, 10);
+          let floorDiff = Math.abs(qFloor - currFloor);
+          let euclidean = Math.hypot(qx - currX, qy - currY);
+          // Scale: 0.25m per coordinate unit + vertical floor transition penalty
+          q._dist = Math.round((euclidean * 0.25) + (floorDiff * 25));
+        });
+
+        // Find nearest checkpoint
+        const currentFloorQrs = allQrCodes.filter(q => parseInt(q.floor_id, 10) === currFloor && q.node_id !== startNodeId);
+        let closest = null;
+        if (currentFloorQrs.length > 0) {
+          closest = currentFloorQrs.slice().sort((a, b) => a._dist - b._dist)[0];
+        } else {
+          const others = allQrCodes.filter(q => q.node_id !== startNodeId);
+          if (others.length > 0) {
+            closest = others.slice().sort((a, b) => a._dist - b._dist)[0];
+          } else if (allQrCodes.length > 0) {
+            closest = allQrCodes[0];
+          }
+        }
+
+        if (closest) {
+          const nearestQrName = document.getElementById("nearestQrName");
+          const nearestQrDistBadge = document.getElementById("nearestQrDistBadge");
+          const nearestQrDesc = document.getElementById("nearestQrDesc");
+          const btnScanNearestDirectly = document.getElementById("btnScanNearestDirectly");
+          const btnViewNearestDirectly = document.getElementById("btnViewNearestDirectly");
+
+          if (nearestQrName) nearestQrName.textContent = closest.location_label || closest.code_id;
+          if (nearestQrDistBadge) {
+            nearestQrDistBadge.textContent = closest._dist <= 3 ? `HERE (~${closest._dist}m)` : `${closest._dist}m away`;
+            nearestQrDistBadge.style.background = closest._dist <= 15 ? "#16a34a" : "#0284c7";
+          }
+          if (nearestQrDesc) {
+            nearestQrDesc.textContent = `${closest.description || 'Stationary wall marker'} · Floor Level ${closest.floor_id === 0 ? 'Ground' : closest.floor_id}`;
+          }
+
+          if (btnScanNearestDirectly) {
+            btnScanNearestDirectly.onclick = async () => {
+              await registerAndResolveQr(closest.code_id);
+            };
+          }
+          if (btnViewNearestDirectly) {
+            btnViewNearestDirectly.onclick = () => {
+              modalShowRealQr.style.display = "flex";
+              updateRealQrDisplay(closest.code_id);
+            };
+          }
+        }
+
+        renderFloorQrChips(currentFloor);
+      }
+
       // Render Checkpoint Chips for Active Floor
       function renderFloorQrChips(floorLevel) {
         if (!floorQrChipsContainer) return;
@@ -704,11 +940,16 @@
           return;
         }
 
+        // Sort by distance
+        floorItems.sort((a, b) => (a._dist ?? 999) - (b._dist ?? 999));
+
         floorItems.forEach(q => {
+          const isCurrent = q.node_id === startNodeId;
+          const distText = q._dist !== undefined ? `${q._dist}m` : "";
           const chip = document.createElement("button");
-          chip.className = `qr-chip ${q.node_id === startNodeId ? 'active' : ''}`;
-          chip.innerHTML = `<span>📷</span> ${q.location_label || q.code_id}`;
-          chip.title = `${q.description} (${q.code_id})`;
+          chip.className = `qr-chip ${isCurrent ? 'active' : ''}`;
+          chip.innerHTML = `<span>📷</span> <span>${q.location_label || q.code_id}</span> ${distText ? `<span style="font-size:9.5px; opacity:0.85; background:rgba(255,255,255,0.12); padding:1px 5px; border-radius:4px; font-weight:700;">${distText}</span>` : ''}`;
+          chip.title = `${q.description} (${q.code_id}) - ${distText ? distText + ' away' : ''}`;
           chip.addEventListener("click", async () => {
             await registerAndResolveQr(q.code_id);
           });
@@ -744,7 +985,7 @@
               }
             });
 
-            renderFloorQrChips(currentFloor);
+            updateNearestQrAndNearbyLocations();
             if (allQrCodes.length > 0) {
               updateRealQrDisplay(allQrCodes[0].code_id);
             }
@@ -1089,12 +1330,11 @@
         pubDistanceLbl.textContent = `${res.distance_meters || res.distanceMeters}m`;
         pubTimeLbl.textContent = `${res.estimated_time_seconds || res.estimatedTimeSeconds}`;
 
-        const instructions = res.instructions || [];
-        if (instructions.length > 0) {
-          const step1 = instructions[0];
-          pubStepTitle.textContent = step1.title;
-          pubStepDesc.textContent = step1.text;
-        }
+        currentNavInstructions = res.instructions || [];
+        currentNavStepIndex = 0;
+        renderNavStep(0);
+
+        updateNearestQrAndNearbyLocations();
 
         renderer.setRoute(res.path, startNodeId);
       }

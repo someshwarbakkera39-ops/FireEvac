@@ -158,8 +158,33 @@ class DijkstraRoutingEngine:
             "alternate_route_applied": len(blocked_edges_set) > 0 or len(blocked_nodes_set) > 0
         }
 
+    def _compute_turn(self, p_prev, p_curr, p_next):
+        """Computes human heading maneuver (straight, left, right, uturn)."""
+        v1_x = p_curr["x"] - p_prev["x"]
+        v1_y = p_curr["y"] - p_prev["y"]
+        v2_x = p_next["x"] - p_curr["x"]
+        v2_y = p_next["y"] - p_curr["y"]
+
+        len1 = math.hypot(v1_x, v1_y)
+        len2 = math.hypot(v2_x, v2_y)
+        if len1 < 1e-3 or len2 < 1e-3:
+            return "straight", "⬆️", "Proceed Straight"
+
+        cross = v1_x * v2_y - v1_y * v2_x
+        dot = v1_x * v2_x + v1_y * v2_y
+        angle_deg = math.degrees(math.atan2(cross, dot))
+
+        if -35.0 <= angle_deg <= 35.0:
+            return "straight", "⬆️", "Proceed Straight"
+        elif 35.0 < angle_deg < 145.0:
+            return "right", "➡️", "Turn Right"
+        elif -145.0 < angle_deg < -35.0:
+            return "left", "⬅️", "Turn Left"
+        else:
+            return "uturn", "⬇️", "Turn Around"
+
     def _generate_instructions(self, path_nodes, exit_node_id, stairwells):
-        """Generates clear, step-by-step human evacuation directives."""
+        """Generates clear, step-by-step human evacuation directives with left/right/straight navigation maneuvers."""
         instructions = []
         if not path_nodes:
             return instructions
@@ -168,9 +193,12 @@ class DijkstraRoutingEngine:
         instructions.append({
             "step": 1,
             "type": "start",
+            "maneuver": "start",
+            "icon": "🚪",
             "floor": start["floor"],
             "title": "Evacuation Initiated",
-            "text": f"Begin immediate egress from {start['name']} on Floor {start['floor']}."
+            "text": f"Begin immediate egress from {start['name']} on Floor {start['floor']}.",
+            "distance_meters": 0
         })
 
         step_counter = 2
@@ -178,6 +206,7 @@ class DijkstraRoutingEngine:
         while i < len(path_nodes):
             curr = path_nodes[i]
             prev = path_nodes[i - 1]
+            dist_seg = round(math.hypot(curr["x"] - prev["x"], curr["y"] - prev["y"]) * 0.25, 1)
 
             # Check for vertical floor transition via staircase
             if curr["floor"] != prev["floor"]:
@@ -186,9 +215,12 @@ class DijkstraRoutingEngine:
                 instructions.append({
                     "step": step_counter,
                     "type": "stair_descent",
+                    "maneuver": "descend",
+                    "icon": "🔽",
                     "floor": curr["floor"],
                     "title": f"Take {stair_name} ({direction.upper()})",
-                    "text": f"Enter {stair_name} and descend from Floor {prev['floor']} to Floor {curr['floor']}."
+                    "text": f"Enter {stair_name} and descend from Floor {prev['floor']} to Floor {curr['floor']}.",
+                    "distance_meters": dist_seg
                 })
                 step_counter += 1
                 i += 1
@@ -196,12 +228,20 @@ class DijkstraRoutingEngine:
 
             # Check for Corridor Transitions
             if curr["type"] == "corridor" and prev["type"] == "room":
+                turn_dir = "straight"
+                turn_icon = "⬆️"
+                turn_label = "Proceed Straight"
+                if i + 1 < len(path_nodes):
+                    turn_dir, turn_icon, turn_label = self._compute_turn(prev, curr, path_nodes[i + 1])
                 instructions.append({
                     "step": step_counter,
                     "type": "corridor_entry",
+                    "maneuver": turn_dir,
+                    "icon": turn_icon,
                     "floor": curr["floor"],
-                    "title": "Enter Corridor",
-                    "text": f"Step out through door into hallway ({curr['name']})."
+                    "title": f"{turn_label} into Corridor",
+                    "text": f"Step out through door into hallway ({curr['name']}) and {turn_label.lower()}.",
+                    "distance_meters": dist_seg
                 })
                 step_counter += 1
             elif curr["type"] == "stair" and prev["type"] == "corridor":
@@ -209,27 +249,50 @@ class DijkstraRoutingEngine:
                 instructions.append({
                     "step": step_counter,
                     "type": "stair_approach",
+                    "maneuver": "straight",
+                    "icon": "⬆️",
                     "floor": curr["floor"],
                     "title": f"Proceed to {stair_name}",
-                    "text": f"Follow corridor directly to {stair_name} fire door."
+                    "text": f"Follow corridor directly to {stair_name} fire door.",
+                    "distance_meters": dist_seg
                 })
                 step_counter += 1
+            elif curr["type"] == "corridor" and prev["type"] == "corridor" and i + 1 < len(path_nodes):
+                turn_dir, turn_icon, turn_label = self._compute_turn(prev, curr, path_nodes[i + 1])
+                if turn_dir in ["left", "right", "uturn"]:
+                    instructions.append({
+                        "step": step_counter,
+                        "type": "corridor_turn",
+                        "maneuver": turn_dir,
+                        "icon": turn_icon,
+                        "floor": curr["floor"],
+                        "title": f"{turn_label} at Junction",
+                        "text": f"{turn_label} along corridor toward {path_nodes[i+1]['name']}.",
+                        "distance_meters": dist_seg
+                    })
+                    step_counter += 1
             elif curr["type"] == "exit":
                 instructions.append({
                     "step": step_counter,
                     "type": "exit_portal",
+                    "maneuver": "exit",
+                    "icon": "🚪",
                     "floor": 0,
                     "title": f"Pass through {curr['name']}",
-                    "text": f"Pass through designated exterior exit door into open perimeter."
+                    "text": f"Pass through designated exterior exit door into open perimeter.",
+                    "distance_meters": dist_seg
                 })
                 step_counter += 1
             elif curr["type"] == "assembly":
                 instructions.append({
                     "step": step_counter,
                     "type": "safe_assembly",
+                    "maneuver": "safe",
+                    "icon": "✅",
                     "floor": 0,
                     "title": "Proceed to Safe Assembly Area",
-                    "text": f"Arrive at {curr['name']}. Report immediately to safety marshals."
+                    "text": f"Arrive at {curr['name']}. Report immediately to safety marshals.",
+                    "distance_meters": dist_seg
                 })
                 step_counter += 1
 
@@ -240,9 +303,12 @@ class DijkstraRoutingEngine:
             instructions.append({
                 "step": step_counter,
                 "type": "safe_arrival",
+                "maneuver": "safe",
+                "icon": "✅",
                 "floor": 0,
                 "title": "Clear Egress Corridor",
-                "text": "Evacuate building perimeter and proceed to designated Outdoor Assembly Grounds."
+                "text": "Evacuate building perimeter and proceed to designated Outdoor Assembly Grounds.",
+                "distance_meters": 0
             })
 
         return instructions
