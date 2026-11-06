@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Smart Emergency Evacuation Planning & Digital Twin System
+   Admin Emergency Management Portal Stylesheet (Blueprint Section 7 & 9)
+   High-Contrast Dark Theme for Safety Operations & Drill Command
+   ========================================================================== */
+
+.admin-header {
+  background: #090d16;
+  border-bottom: 1px solid #1e293b;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 60;
+}
+
+.alarm-banner {
+  background: linear-gradient(90deg, #dc2626, #b91c1c);
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+  animation: alarmPulse 1.8s infinite;
+}
+
+@keyframes alarmPulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+.tool-palette {
+  display: flex;
+  gap: 6px;
+  background: #0f172a;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.tool-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.tool-btn:hover {
+  background: #334155;
+  color: #fff;
+}
+
+.tool-btn.active {
+  background: #dc2626;
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+}
+
+.tool-btn.tool-smoke.active {
+  background: #64748b;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.4);
+}
+
+.tool-btn.tool-barrier.active {
+  background: #d97706;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+}
+
+.tool-btn.tool-inspect.active {
+  background: #2563eb;
+  border-color: #60a5fa;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+.admin-sidebar {
+  width: 420px;
+  background: #0a0f1d;
+  border-left: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.drill-card {
+  background: #131d31;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.drill-card:hover {
+  border-color: #38bdf8;
+  background: #17243c;
+}
+
+.drill-card.active {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.corridor-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #131d31;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.qr-badge-preview {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  margin-top: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+
+.qr-badge-preview h4 {
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 2px;
+  color: #0f172a;
+}
+
+.qr-badge-preview p {
+  font-size: 10px;
+  color: #475569;
+}
+

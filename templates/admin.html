@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Emergency Management Portal | Block A Digital Twin</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+  <!-- Live Emergency Alarm Banner (Shown during active drill / incident) -->
+  <div id="alarmBroadcastBanner" class="alarm-banner" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 16px;">🚨</span>
+      <span>EMERGENCY DRILL BROADCAST ACTIVE: OCCUPANTS MUST PROCEED TO SAFE DESIGNATED ASSEMBLY GROUNDS</span>
+    </div>
+    <button id="btnBannerDismiss" style="background: rgba(0,0,0,0.3); border: 1px solid #fff; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">
+      Acknowledge
+    </button>
+  </div>
+
+  <!-- Admin Header Bar -->
+  <header class="admin-header">
+    <div class="brand-section">
+      <div class="brand-badge" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">ADMIN CONSOLE</div>
+      <div class="brand-titles">
+        <h1 style="color: #f8fafc;">
+          Block A Emergency Management Portal
+          <span class="phase-pill" id="phasePill" style="background: rgba(220, 38, 38, 0.2); color: #fca5a5; border-color: rgba(220, 38, 38, 0.4);">
+            Phase 4: Admin Portal & Simulation Center
+          </span>
+        </h1>
+        <p>Dynamic Incident Control, Corridor Blockades & Real-Time Evacuation Drill Command</p>
+      </div>
+    </div>
+
+    <!-- Active Tool Palette -->
+    <div class="tool-palette">
+      <span style="font-size: 10px; font-weight: bold; color: #94a3b8; align-self: center; margin-right: 4px;">TOOL:</span>
+      <button class="tool-btn active" id="toolFire" data-mode="fire" title="Click on canvas to drop fire hazard">
+        🔥 Place Fire
+      </button>
+      <button class="tool-btn tool-smoke" id="toolSmoke" data-mode="smoke" title="Click on canvas to drop smoke hazard">
+        💨 Dense Smoke
+      </button>
+      <button class="tool-btn tool-barrier" id="toolBarrier" data-mode="barrier" title="Click on corridor to drop physical barricade">
+        🚧 Barricade
+      </button>
+      <button class="tool-btn tool-inspect" id="toolInspect" data-mode="inspect" title="Click hazard to resolve/delete">
+        🧹 Clear / Inspect
+      </button>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="header-status-bar">
+      <div class="status-indicator" style="border-color: #ef4444;">
+        <div class="pulse-dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></div>
+        <span style="color: #fca5a5; font-weight: bold;">Incident Command Active</span>
+      </div>
+      <div class="status-indicator">
+        <span style="color: #38bdf8;">Officer:</span>
+        <span id="adminOfficerName">Chief Safety Commander</span>
+      </div>
+      <button id="btnTriggerAlarm" class="canvas-btn" style="background: #dc2626; border-color: #ef4444; color: #fff;">
+        🚨 Trigger SOS Alarm
+      </button>
+      <button id="btnAllClear" class="canvas-btn" style="background: #16a34a; border-color: #22c55e; color: #fff;">
+        ✓ All Clear
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Floor Navigation Bar -->
+    <nav class="floor-nav-bar" aria-label="Floor selection">
+      <span class="nav-label">Floors</span>
+      <button class="floor-btn" data-floor="4">
+        <span class="btn-num">4F</span>
+        <span class="btn-desc">Auditorium</span>
+      </button>
+      <button class="floor-btn" data-floor="3">
+        <span class="btn-num">3F</span>
+        <span class="btn-desc">Library/AI</span>
+      </button>
+      <button class="floor-btn" data-floor="2">
+        <span class="btn-num">2F</span>
+        <span class="btn-desc">Lectures</span>
+      </button>
+      <button class="floor-btn" data-floor="1">
+        <span class="btn-num">1F</span>
+        <span class="btn-desc">Faculty/Lab</span>
+      </button>
+      <button class="floor-btn active" data-floor="0">
+        <span class="btn-num">G</span>
+        <span class="btn-desc">Exits & Admin</span>
+      </button>
+    </nav>
+
+    <!-- Canvas Workspace -->
+    <main class="canvas-workspace">
+      <!-- Floating Navigation Controls -->
+      <div class="canvas-floating-controls">
+        <button class="canvas-btn" id="btnZoomIn" title="Zoom In (+)">🔍 +</button>
+        <button class="canvas-btn" id="btnZoomOut" title="Zoom Out (-)">🔍 −</button>
+        <button class="canvas-btn" id="btnResetView" title="Reset View">⟲ Reset</button>
+        <span style="width: 1px; background: #334155; margin: 0 4px;"></span>
+        <span id="currentToolIndicator" style="font-size: 11px; font-weight: bold; color: #fca5a5; background: rgba(220, 38, 38, 0.2); padding: 4px 8px; border-radius: 4px;">
+          MODE: CLICK MAP TO DROP FIRE HAZARD
+        </span>
+        <span id="currentFloorTag" style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; padding: 0 6px;">
+          GROUND FLOOR (LEVEL 0)
+        </span>
+      </div>
+
+      <!-- SVG Map Canvas Container -->
+      <div id="floorMapContainer" style="width: 100%; height: 100%;"></div>
+
+      <!-- Floating Visual Safety Palette Legend -->
+      <div class="canvas-floating-legend">
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #dc2626;"></div>
+          <span>Active Fire Hazard (#dc2626)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #d97706;"></div>
+          <span>Barricade / Blocked Corridor (#d97706)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #16a34a;"></div>
+          <span>Dynamic Cleared Evacuation Path (#16a34a)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #2563eb;"></div>
+          <span>Occupant In-Transit Marker (#2563eb)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #f59e0b;"></div>
+          <span>Stairwells & Vertical Descent (#f59e0b)</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Admin Operations & Simulation Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-header" style="background: #111827;">
+        <h2 style="font-size: 14px; color: #f8fafc;">Emergency Operations Center</h2>
+        <p style="font-size: 11px; color: #94a3b8;">Incident Simulation, Barricades & Drill Metrics</p>
+      </div>
+
+      <!-- Live Occupancy Status Cards -->
+      <div class="sidebar-section">
+        <div class="section-title">Live Occupancy & Evacuation Monitor</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="num" id="adminOccInside" style="color: #fbbf24;">5</div>
+            <div class="lbl">Inside Facility</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="adminOccSafe" style="color: #4ade80;">7</div>
+            <div class="lbl">Safely Evacuated</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="adminOccMissing" style="color: #ef4444;">0</div>
+            <div class="lbl">Missing / Trapped</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="adminActiveHazards" style="color: #fca5a5;">0</div>
+            <div class="lbl">Active Hazards</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Center (Drill Scenarios) -->
+      <div class="sidebar-section">
+        <div class="section-title">
+          <span>Drill Simulation Center</span>
+          <span style="font-size: 10px; color: #38bdf8; font-weight: normal;">No IoT Hardware Req.</span>
+        </div>
+        
+        <div class="drill-card active" id="drillBaseline">
+          <div style="font-size: 12px; font-weight: bold; color: #4ade80;">Drill 1: Standard Baseline Evacuation</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Normal operations; tests shortest path from Floor 4 Auditorium to ground exits.</div>
+        </div>
+
+        <div class="drill-card" id="drillGroundExitBlocked">
+          <div style="font-size: 12px; font-weight: bold; color: #fca5a5;">Drill 2: Ground Floor Main Exit Engulfed</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Simulates fire at Exit 1 turnstiles; forces immediate bypass to West/East exits.</div>
+        </div>
+
+        <div class="drill-card" id="drillStairBBlocked">
+          <div style="font-size: 12px; font-weight: bold; color: #fca5a5;">Drill 3: Staircase B Failure on Floor 2</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Engulfs Staircase B on L2; tests skybridge rerouting of AI Lab to Staircase A.</div>
+        </div>
+
+        <div class="drill-card" id="drillCompoundFire">
+          <div style="font-size: 12px; font-weight: bold; color: #ef4444;">Drill 4: Multi-Hazard Compound Emergency</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Simultaneous fire spread across floors and main corridor barricades.</div>
+        </div>
+      </div>
+
+      <!-- Corridor Barricade Quick Toggles -->
+      <div class="sidebar-section">
+        <div class="section-title">Corridor & Stairwell Barricade Toggles</div>
+        <div class="corridor-toggle-row">
+          <span>West Wing North Corridor (Floor 1)</span>
+          <input type="checkbox" class="corridor-chk" data-u="N1_W_NORTH" data-v="N1_W_MID_N" />
+        </div>
+        <div class="corridor-toggle-row">
+          <span>Central Bridge Skywalk (Floor 2)</span>
+          <input type="checkbox" class="corridor-chk" data-u="N2_C_WEST" data-v="N2_C_CENTER" />
+        </div>
+        <div class="corridor-toggle-row">
+          <span>Staircase B Fire Landing (Floor 2)</span>
+          <input type="checkbox" class="node-chk" data-node="STAIR_B_2" />
+        </div>
+        <div class="corridor-toggle-row">
+          <span>Main South Exit Concourse (Floor 0)</span>
+          <input type="checkbox" class="node-chk" data-node="NODE_EXIT_G_MAIN" />
+        </div>
+      </div>
+
+      <!-- Printable QR Code Generator & Test Kit -->
+      <div class="sidebar-section">
+        <div class="section-title">Printable QR Code Testing Kit</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
+          Generate printable physical test markers calibrated for prototype testing:
+        </div>
+        <select id="adminQrSelect" class="form-input" style="width: 100%; margin-bottom: 8px;">
+          <option value="QR_3_AILAB">Floor 3: AI Lab 305 Checkpoint</option>
+          <option value="QR_4_AUDITORIUM">Floor 4: Grand Auditorium Checkpoint</option>
+          <option value="QR_2_LECTURE">Floor 2: Lecture Theater 201 Checkpoint</option>
+          <option value="QR_1_FACULTY">Floor 1: Faculty Dept 101 Checkpoint</option>
+          <option value="QR_G_ATRIUM">Floor 0: Ground Atrium Reception</option>
+        </select>
+        
+        <div id="qrCardPreview" class="qr-badge-preview">
+          <h4 id="qrCardTitle">AI & Autonomous Robotics Lab 305</h4>
+          <p id="qrCardSub">Block A • Floor 3 • Stationary Positioning Checkpoint</p>
+          <div id="qrSvgHolder" style="margin: 10px auto; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; background: #fff;">
+            <!-- Rendered SVG QR -->
+          </div>
+          <div style="font-size: 10px; font-weight: bold; color: #1e293b; font-family: monospace;" id="qrCardCode">
+            PAYLOAD: QR_3_AILAB
+          </div>
+          <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
+            Scan with smartphone camera for instant floor & node routing
+          </div>
+        </div>
+
+        <button id="btnPrintQrBadge" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px;">
+          🖨️ Print / Export QR Badge Marker
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/floor_plans.js"></script>
+  <script src="/static/js/map_renderer.js"></script>
+  <script src="/static/js/dijkstra.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      let activeToolMode = "fire"; // 'fire', 'smoke', 'barrier', 'inspect'
+      let currentFloor = 0;
+      let activeHazards = [];
+      let blockedNodes = new Set();
+      let blockedEdges = new Set();
+
+      // 1. Initialize Map Renderer
+      const renderer = new FloorMapRenderer("floorMapContainer", {
+        initialFloor: 0,
+        onRoomClick: (room, floor) => {
+          handleCanvasPointClick(room.door.x, room.door.y, floor.level, `Room ${room.code}`);
+        }
+      });
+
+      // 2. Fetch Graph Data
+      let graphData = null;
+      let clientDijkstra = null;
+
+      try {
+        const resp = await fetch("/api/graph");
+        const json = await resp.json();
+        if (json.status === "success") {
+          graphData = json.graph;
+          renderer.setGraphData(graphData);
+          clientDijkstra = new ClientDijkstra(graphData);
+        }
+      } catch (err) {
+        console.warn("Offline graph fallback", err);
+      }
+
+      // UI Elements
+      const floorButtons = document.querySelectorAll(".floor-btn");
+      const currentFloorTag = document.getElementById("currentFloorTag");
+      const currentToolIndicator = document.getElementById("currentToolIndicator");
+      const toolButtons = document.querySelectorAll(".tool-btn");
+      const adminActiveHazards = document.getElementById("adminActiveHazards");
+      const adminOccInside = document.getElementById("adminOccInside");
+      const adminOccSafe = document.getElementById("adminOccSafe");
+      const alarmBanner = document.getElementById("alarmBroadcastBanner");
+
+      function updateFloorUI(level) {
+        currentFloor = parseInt(level, 10);
+        renderer.setFloor(currentFloor);
+        floorButtons.forEach(btn => btn.classList.toggle("active", parseInt(btn.dataset.floor, 10) === currentFloor));
+        const fl = window.BLOCK_A_MODEL.floors[currentFloor];
+        currentFloorTag.textContent = `${fl.name.toUpperCase()} (LEVEL ${fl.level})`;
+      }
+
+      floorButtons.forEach(btn => btn.addEventListener("click", () => updateFloorUI(btn.dataset.floor)));
+
+      // Zoom & Reset
+      document.getElementById("btnZoomIn").addEventListener("click", () => renderer.zoomIn());
+      document.getElementById("btnZoomOut").addEventListener("click", () => renderer.zoomOut());
+      document.getElementById("btnResetView").addEventListener("click", () => renderer.resetView());
+
+      // Tool Palette Selection
+      toolButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          toolButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          activeToolMode = btn.getAttribute("data-mode");
+
+          const modeTexts = {
+            fire: "MODE: CLICK MAP TO DROP FIRE HAZARD",
+            smoke: "MODE: CLICK MAP TO DROP DENSE SMOKE OBSTACLE",
+            barrier: "MODE: CLICK CORRIDOR TO PLACE PHYSICAL BARRICADE",
+            inspect: "MODE: CLICK HAZARD OR BARRICADE TO RESOLVE / CLEAR"
+          };
+          currentToolIndicator.textContent = modeTexts[activeToolMode] || "READY";
+        });
+      });
+
+      // Canvas Point-and-Click Handler
+      const svgElem = document.getElementById("buildingSvg");
+      svgElem.addEventListener("click", (e) => {
+        if (renderer.isPanning) return;
+        const rect = svgElem.getBoundingClientRect();
+        // Calculate canvas coordinates accounting for zoom and pan
+        const clickX = (e.clientX - rect.left - renderer.panX) / renderer.zoom;
+        const clickY = (e.clientY - rect.top - renderer.panY) / renderer.zoom;
+
+        // Ensure click is within building canvas bounding box (100 to 1100, 120 to 620)
+        if (clickX >= 80 && clickX <= 1120 && clickY >= 100 && clickY <= 650) {
+          handleCanvasPointClick(Math.round(clickX), Math.round(clickY), currentFloor, `Point (${Math.round(clickX)}, ${Math.round(clickY)})`);
+        }
+      });
+
+      async function handleCanvasPointClick(x, y, floorLevel, label) {
+        if (activeToolMode === "inspect") {
+          // Find closest hazard to clear
+          const haz = activeHazards.find(h => h.floor_id === floorLevel && Math.hypot(h.location_x - x, h.location_y - y) <= (h.radius || 50));
+          if (haz) {
+            await fetch(`/api/hazards/${haz.id}`, { method: "DELETE" });
+            syncHazardsFromDb();
+          }
+          return;
+        }
+
+        // Place Hazard
+        const payload = {
+          floor_id: floorLevel,
+          location_x: x,
+          location_y: y,
+          type: activeToolMode === "barrier" ? "structural_blockage" : activeToolMode,
+          radius: activeToolMode === "smoke" ? 60 : 45,
+          description: `Point-and-click placed ${activeToolMode} at ${label}`
+        };
+
+        try {
+          await fetch("/api/hazards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          syncHazardsFromDb();
+        } catch (e) {
+          console.error("Failed to place hazard", e);
+        }
+      }
+
+      // Sync active hazards from backend SQLite DB
+      async function syncHazardsFromDb() {
+        try {
+          const resp = await fetch("/api/hazards");
+          const json = await resp.json();
+          activeHazards = json.hazards || [];
+          adminActiveHazards.textContent = activeHazards.length;
+
+          // Block nodes within hazard radius
+          blockedNodes.clear();
+          activeHazards.forEach(h => {
+            if (graphData) {
+              for (const nid in graphData.nodes) {
+                const n = graphData.nodes[nid];
+                if (n.floor === h.floor_id) {
+                  if (Math.hypot(n.x - h.location_x, n.y - h.location_y) <= (h.radius || 45)) {
+                    blockedNodes.add(nid);
+                  }
+                }
+              }
+            }
+          });
+
+          renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
+
+          // Also calculate sample evacuation route to preview dynamic reroute
+          previewAdminRoute();
+        } catch (e) {
+          console.warn("Sync hazards fallback", e);
+        }
+      }
+
+      function previewAdminRoute() {
+        if (!clientDijkstra) return;
+        const start = currentFloor === 0 ? "NODE_ROOM_G_01" : `NODE_ROOM_${currentFloor}_01`;
+        const res = clientDijkstra.calculateRoute(start, {
+          blockedNodes: Array.from(blockedNodes),
+          blockedEdges: Array.from(blockedEdges)
+        });
+        if (res.success) {
+          renderer.setRoute(res.path, start);
+        } else {
+          renderer.clearRoute();
+        }
+      }
+
+      // Corridor Checkbox Toggles
+      document.querySelectorAll(".corridor-chk").forEach(chk => {
+        chk.addEventListener("change", async (e) => {
+          const u = chk.getAttribute("data-u");
+          const v = chk.getAttribute("data-v");
+          const edgeKey = `${u}--${v}`;
+          if (e.target.checked) blockedEdges.add(edgeKey);
+          else blockedEdges.delete(edgeKey);
+
+          await fetch("/api/paths/toggle-block", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ from_node: u, to_node: v, is_blocked: e.target.checked })
+          });
+          renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
+          previewAdminRoute();
+        });
+      });
+
+      document.querySelectorAll(".node-chk").forEach(chk => {
+        chk.addEventListener("change", (e) => {
+          const nid = chk.getAttribute("data-node");
+          if (e.target.checked) blockedNodes.add(nid);
+          else blockedNodes.delete(nid);
+          renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
+          previewAdminRoute();
+        });
+      });
+
+      // Simulation Center Drill Cards
+      const drillCards = [
+        document.getElementById("drillBaseline"),
+        document.getElementById("drillGroundExitBlocked"),
+        document.getElementById("drillStairBBlocked"),
+        document.getElementById("drillCompoundFire")
+      ];
+
+      drillCards.forEach((dc, idx) => {
+        dc.addEventListener("click", async () => {
+          drillCards.forEach(d => d.classList.remove("active"));
+          dc.classList.add("active");
+
+          await fetch("/api/hazards/clear", { method: "POST" });
+          blockedEdges.clear();
+          blockedNodes.clear();
+
+          if (idx === 1) {
+            // Drill 2: Ground Exit Blocked
+            await fetch("/api/hazards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ floor_id: 0, location_x: 600, location_y: 620, type: "fire", radius: 60 })
+            });
+            updateFloorUI(0);
+          } else if (idx === 2) {
+            // Drill 3: Staircase B Blocked on Floor 2
+            await fetch("/api/hazards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ floor_id: 2, location_x: 1030, location_y: 175, type: "fire", radius: 70 })
+            });
+            updateFloorUI(2);
+          } else if (idx === 3) {
+            // Drill 4: Compound Fire
+            await fetch("/api/hazards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ floor_id: 1, location_x: 275, location_y: 175, type: "fire", radius: 55 })
+            });
+            await fetch("/api/hazards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ floor_id: 0, location_x: 600, location_y: 620, type: "fire", radius: 60 })
+            });
+            updateFloorUI(1);
+          }
+
+          syncHazardsFromDb();
+        });
+      });
+
+      // Alarm & All-Clear Buttons
+      document.getElementById("btnTriggerAlarm").addEventListener("click", () => {
+        alarmBanner.style.display = "flex";
+      });
+      document.getElementById("btnBannerDismiss").addEventListener("click", () => {
+        alarmBanner.style.display = "none";
+      });
+      document.getElementById("btnAllClear").addEventListener("click", async () => {
+        alarmBanner.style.display = "none";
+        await fetch("/api/hazards/clear", { method: "POST" });
+        blockedNodes.clear();
+        blockedEdges.clear();
+        drillCards.forEach(d => d.classList.remove("active"));
+        drillCards[0].classList.add("active");
+        syncHazardsFromDb();
+      });
+
+      // QR Badge Renderer (Pure Vector QR Matrix generation)
+      function renderQrBadge(codeId) {
+        const qrMeta = {
+          "QR_3_AILAB": { title: "AI & Autonomous Robotics Lab 305", sub: "Block A • Floor 3 • Stationary Positioning Checkpoint", node: "NODE_ROOM_3_05" },
+          "QR_4_AUDITORIUM": { title: "Grand Auditorium 406", sub: "Block A • Floor 4 • Top Level Foyer Column", node: "NODE_ROOM_4_06" },
+          "QR_2_LECTURE": { title: "Smart Lecture Hall 201", sub: "Block A • Floor 2 • Tiered Theater Entry", node: "NODE_ROOM_2_01" },
+          "QR_1_FACULTY": { title: "Faculty Department Office 101", sub: "Block A • Floor 1 • West Wing Corridor Plaque", node: "NODE_ROOM_1_01" },
+          "QR_G_ATRIUM": { title: "Central Reception Atrium", sub: "Block A • Ground Floor • Main Entrance Concourse", node: "NODE_LOBBY_SOUTH" }
+        };
+
+        const meta = qrMeta[codeId] || { title: codeId, sub: "Stationary QR Checkpoint", node: codeId };
+        document.getElementById("qrCardTitle").textContent = meta.title;
+        document.getElementById("qrCardSub").textContent = meta.sub;
+        document.getElementById("qrCardCode").textContent = `PAYLOAD: ${codeId}`;
+
+        // Render SVG QR pattern
+        document.getElementById("qrSvgHolder").innerHTML = `
+          <svg viewBox="0 0 100 100" width="115" height="115">
+            <!-- QR Position Detection Patterns -->
+            <rect x="5" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
+            <rect x="9" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
+            <rect x="13" y="13" width="12" height="12" fill="#0f172a"/>
+
+            <rect x="67" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
+            <rect x="71" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
+            <rect x="75" y="13" width="12" height="12" fill="#0f172a"/>
+
+            <rect x="5" y="67" width="28" height="28" fill="#0f172a" rx="4"/>
+            <rect x="9" y="71" width="20" height="20" fill="#ffffff" rx="2"/>
+            <rect x="13" y="75" width="12" height="12" fill="#0f172a"/>
+
+            <!-- QR Data Matrix Cells -->
+            <rect x="38" y="10" width="6" height="6" fill="#0f172a"/>
+            <rect x="48" y="10" width="6" height="6" fill="#0f172a"/>
+            <rect x="38" y="24" width="6" height="6" fill="#0f172a"/>
+            <rect x="56" y="24" width="6" height="6" fill="#0f172a"/>
+
+            <rect x="10" y="38" width="6" height="6" fill="#0f172a"/>
+            <rect x="24" y="38" width="6" height="6" fill="#0f172a"/>
+            <rect x="38" y="38" width="24" height="24" fill="#0f172a"/>
+            <rect x="42" y="42" width="16" height="16" fill="#ffffff"/>
+            <circle cx="50" cy="50" r="4" fill="#2563eb"/>
+
+            <rect x="68" y="38" width="6" height="6" fill="#0f172a"/>
+            <rect x="82" y="38" width="6" height="6" fill="#0f172a"/>
+
+            <rect x="38" y="68" width="6" height="6" fill="#0f172a"/>
+            <rect x="48" y="78" width="6" height="6" fill="#0f172a"/>
+            <rect x="68" y="68" width="6" height="6" fill="#0f172a"/>
+            <rect x="80" y="80" width="8" height="8" fill="#0f172a"/>
+          </svg>
+        `;
+      }
+
+      document.getElementById("adminQrSelect").addEventListener("change", (e) => {
+        renderQrBadge(e.target.value);
+      });
+      renderQrBadge("QR_3_AILAB");
+
+      document.getElementById("btnPrintQrBadge").addEventListener("click", () => {
+        window.print();
+      });
+
+      // Initial Sync
+      syncHazardsFromDb();
+    });
+  </script>
+</body>
+</html>
+

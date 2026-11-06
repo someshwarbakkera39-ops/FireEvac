@@ -1,0 +1,535 @@
+{
+  "building": {
+    "name": "Block A Facility",
+    "blueprint_title": "Smart Emergency Evacuation Planning & Digital Twin System",
+    "canvas_dimensions": { "width": 1200, "height": 750 },
+    "floors_count": 5,
+    "floor_indices": [0, 1, 2, 3, 4],
+    "assembly_points": [
+      {
+        "id": "ASSEMBLY_SOUTH",
+        "name": "Assembly Point 1 (South Lawn)",
+        "x": 600,
+        "y": 715,
+        "type": "outdoor_assembly",
+        "gps": { "lat": 12.9716, "lng": 77.5946 },
+        "description": "Primary outdoor safe evacuation assembly grounds - South Lawn"
+      },
+      {
+        "id": "ASSEMBLY_NORTH",
+        "name": "Assembly Point 2 (North Sports Ground)",
+        "x": 600,
+        "y": 45,
+        "type": "outdoor_assembly",
+        "gps": { "lat": 12.9725, "lng": 77.5946 },
+        "description": "Secondary safe muster point - North Sports Complex"
+      }
+    ],
+    "stairwells": [
+      {
+        "id": "STAIR_A",
+        "name": "Staircase A (West Wing Core)",
+        "bounds": { "x": 120, "y": 130, "width": 100, "height": 90 },
+        "center_node": { "x": 170, "y": 175 },
+        "corridor_door": { "x": 275, "y": 175 },
+        "serves_floors": [0, 1, 2, 3, 4],
+        "type": "fire_stairwell",
+        "description": "Pressurized West Staircase with continuous vertical egress to Ground Floor West Exit"
+      },
+      {
+        "id": "STAIR_B",
+        "name": "Staircase B (East Wing Core)",
+        "bounds": { "x": 980, "y": 130, "width": 100, "height": 90 },
+        "center_node": { "x": 1030, "y": 175 },
+        "corridor_door": { "x": 925, "y": 175 },
+        "serves_floors": [0, 1, 2, 3, 4],
+        "type": "fire_stairwell",
+        "description": "Pressurized East Staircase with continuous vertical egress to Ground Floor East Exit"
+      }
+    ]
+  },
+  "floors": {
+    "0": {
+      "level": 0,
+      "short_name": "G",
+      "display_name": "Ground Floor (Level 0)",
+      "description": "Primary egress hub, central administration, reception atrium, and primary building exits.",
+      "exits": [
+        {
+          "id": "EXIT_G_MAIN",
+          "name": "Exit 1: Main South Entrance / Exit",
+          "x": 600,
+          "y": 620,
+          "door_x": 600,
+          "door_y": 620,
+          "width": 60,
+          "height": 20,
+          "type": "primary_exit",
+          "assembly_target": "ASSEMBLY_SOUTH",
+          "color": "#16a34a"
+        },
+        {
+          "id": "EXIT_G_WEST",
+          "name": "Exit 2: West Wing Emergency Fire Exit",
+          "x": 100,
+          "y": 370,
+          "door_x": 100,
+          "door_y": 370,
+          "width": 20,
+          "height": 50,
+          "type": "emergency_exit",
+          "assembly_target": "ASSEMBLY_NORTH",
+          "color": "#16a34a"
+        },
+        {
+          "id": "EXIT_G_EAST",
+          "name": "Exit 3: East Wing Emergency Fire Exit",
+          "x": 1100,
+          "y": 370,
+          "door_x": 1100,
+          "door_y": 370,
+          "width": 20,
+          "height": 50,
+          "type": "emergency_exit",
+          "assembly_target": "ASSEMBLY_SOUTH",
+          "color": "#16a34a"
+        }
+      ],
+      "rooms": [
+        {
+          "id": "ROOM_G_01",
+          "name": "Admin & Accounts Office",
+          "code": "G-101",
+          "x": 120, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 290 },
+          "type": "office"
+        },
+        {
+          "id": "ROOM_G_02",
+          "name": "First Aid & Emergency Clinic",
+          "code": "G-102",
+          "x": 120, "y": 360, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 410 },
+          "type": "medical"
+        },
+        {
+          "id": "ROOM_G_03",
+          "name": "Campus Security & Command Center",
+          "code": "G-103",
+          "x": 120, "y": 480, "width": 130, "height": 110,
+          "door": { "x": 250, "y": 535 },
+          "type": "security"
+        },
+        {
+          "id": "ROOM_G_04",
+          "name": "Visitor Lounge & Admissions",
+          "code": "G-104",
+          "x": 300, "y": 130, "width": 130, "height": 100,
+          "door": { "x": 300, "y": 180 },
+          "type": "lounge"
+        },
+        {
+          "id": "ROOM_G_05",
+          "name": "Records Archive & Facility Store",
+          "code": "G-105",
+          "x": 300, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 300, "y": 470 },
+          "type": "facility"
+        },
+        {
+          "id": "LOBBY_G",
+          "name": "Central Grand Atrium & Reception",
+          "code": "G-ATRIUM",
+          "x": 450, "y": 260, "width": 300, "height": 220,
+          "door": { "x": 600, "y": 480 },
+          "type": "lobby"
+        },
+        {
+          "id": "ROOM_G_06",
+          "name": "Central Food Court & Cafeteria",
+          "code": "G-106",
+          "x": 770, "y": 130, "width": 190, "height": 160,
+          "door": { "x": 890, "y": 290 },
+          "type": "cafeteria"
+        },
+        {
+          "id": "ROOM_G_07",
+          "name": "High-Voltage Electrical Substation",
+          "code": "G-107",
+          "x": 770, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 900, "y": 470 },
+          "type": "utility"
+        },
+        {
+          "id": "ROOM_G_08",
+          "name": "Facility Maintenance & Engineering",
+          "code": "G-108",
+          "x": 950, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 950, "y": 290 },
+          "type": "engineering"
+        },
+        {
+          "id": "ROOM_G_09",
+          "name": "Logistics & Goods Receiving Bay",
+          "code": "G-109",
+          "x": 950, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 950, "y": 470 },
+          "type": "logistics"
+        }
+      ]
+    },
+    "1": {
+      "level": 1,
+      "short_name": "1F",
+      "display_name": "First Floor (Level 1)",
+      "description": "Faculty departments, administrative suites, software labs, and bridge gallery.",
+      "exits": [],
+      "rooms": [
+        {
+          "id": "ROOM_1_01",
+          "name": "Faculty Department Office A",
+          "code": "101",
+          "x": 120, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 290 },
+          "type": "office"
+        },
+        {
+          "id": "ROOM_1_02",
+          "name": "Faculty Department Office B",
+          "code": "102",
+          "x": 120, "y": 360, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 410 },
+          "type": "office"
+        },
+        {
+          "id": "ROOM_1_03",
+          "name": "Head of Department (HOD) Suite",
+          "code": "103",
+          "x": 120, "y": 480, "width": 130, "height": 110,
+          "door": { "x": 250, "y": 535 },
+          "type": "executive"
+        },
+        {
+          "id": "ROOM_1_04",
+          "name": "Faculty Conference Room W1",
+          "code": "104",
+          "x": 300, "y": 130, "width": 130, "height": 100,
+          "door": { "x": 300, "y": 180 },
+          "type": "conference"
+        },
+        {
+          "id": "ROOM_1_05",
+          "name": "Restroom & Facility Core West",
+          "code": "105",
+          "x": 300, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 300, "y": 470 },
+          "type": "restroom"
+        },
+        {
+          "id": "BRIDGE_1",
+          "name": "Skybridge Exhibition Gallery",
+          "code": "1-BRIDGE",
+          "x": 450, "y": 280, "width": 300, "height": 180,
+          "door": { "x": 600, "y": 370 },
+          "type": "bridge"
+        },
+        {
+          "id": "ROOM_1_06",
+          "name": "Computer Science Software Lab 101",
+          "code": "106",
+          "x": 770, "y": 130, "width": 190, "height": 160,
+          "door": { "x": 890, "y": 290 },
+          "type": "lab"
+        },
+        {
+          "id": "ROOM_1_07",
+          "name": "Advanced Networks Lab 102",
+          "code": "107",
+          "x": 770, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 900, "y": 470 },
+          "type": "lab"
+        },
+        {
+          "id": "ROOM_1_08",
+          "name": "Electronics Prototype Workshop",
+          "code": "108",
+          "x": 950, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 950, "y": 290 },
+          "type": "workshop"
+        },
+        {
+          "id": "ROOM_1_09",
+          "name": "Floor Network & Rack Room",
+          "code": "109",
+          "x": 950, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 950, "y": 470 },
+          "type": "server"
+        }
+      ]
+    },
+    "2": {
+      "level": 2,
+      "short_name": "2F",
+      "display_name": "Second Floor (Level 2)",
+      "description": "Smart lecture theaters, seminar halls, and student collaborative study pods.",
+      "exits": [],
+      "rooms": [
+        {
+          "id": "ROOM_2_01",
+          "name": "Smart Lecture Hall 201 (Tiered)",
+          "code": "201",
+          "x": 120, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 290 },
+          "type": "classroom"
+        },
+        {
+          "id": "ROOM_2_02",
+          "name": "Smart Lecture Hall 202 (Tiered)",
+          "code": "202",
+          "x": 120, "y": 360, "width": 130, "height": 100,
+          "door": { "x": 250, "y": 410 },
+          "type": "classroom"
+        },
+        {
+          "id": "ROOM_2_03",
+          "name": "Tutorial Room & Discussion Studio",
+          "code": "203",
+          "x": 120, "y": 480, "width": 130, "height": 110,
+          "door": { "x": 250, "y": 535 },
+          "type": "tutorial"
+        },
+        {
+          "id": "ROOM_2_04",
+          "name": "Student Project Studio W2",
+          "code": "204",
+          "x": 300, "y": 130, "width": 130, "height": 100,
+          "door": { "x": 300, "y": 180 },
+          "type": "studio"
+        },
+        {
+          "id": "ROOM_2_05",
+          "name": "Restroom & Core Facilities West",
+          "code": "205",
+          "x": 300, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 300, "y": 470 },
+          "type": "restroom"
+        },
+        {
+          "id": "BRIDGE_2",
+          "name": "Central Collaborative Study Pods",
+          "code": "2-BRIDGE",
+          "x": 450, "y": 280, "width": 300, "height": 180,
+          "door": { "x": 600, "y": 370 },
+          "type": "bridge"
+        },
+        {
+          "id": "ROOM_2_06",
+          "name": "Multipurpose Seminar Hall 201",
+          "code": "206",
+          "x": 770, "y": 130, "width": 190, "height": 160,
+          "door": { "x": 890, "y": 290 },
+          "type": "seminar"
+        },
+        {
+          "id": "ROOM_2_07",
+          "name": "Smart Classroom 204",
+          "code": "207",
+          "x": 770, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 900, "y": 470 },
+          "type": "classroom"
+        },
+        {
+          "id": "ROOM_2_08",
+          "name": "Smart Classroom 205",
+          "code": "208",
+          "x": 950, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 950, "y": 290 },
+          "type": "classroom"
+        },
+        {
+          "id": "ROOM_2_09",
+          "name": "Digital Twin IoT Sensor Node",
+          "code": "209",
+          "x": 950, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 950, "y": 470 },
+          "type": "server"
+        }
+      ]
+    },
+    "3": {
+      "level": 3,
+      "short_name": "3F",
+      "display_name": "Third Floor (Level 3)",
+      "description": "Central Department Library, AI & Robotics Labs, HPC Server Center.",
+      "exits": [],
+      "rooms": [
+        {
+          "id": "ROOM_3_01",
+          "name": "Department Library - Main Stacks",
+          "code": "301",
+          "x": 120, "y": 240, "width": 130, "height": 160,
+          "door": { "x": 250, "y": 320 },
+          "type": "library"
+        },
+        {
+          "id": "ROOM_3_02",
+          "name": "Digital Library & Research Terminals",
+          "code": "302",
+          "x": 120, "y": 430, "width": 130, "height": 160,
+          "door": { "x": 250, "y": 490 },
+          "type": "library"
+        },
+        {
+          "id": "ROOM_3_03",
+          "name": "Silent Reading Cubicles W3",
+          "code": "303",
+          "x": 300, "y": 130, "width": 130, "height": 100,
+          "door": { "x": 300, "y": 180 },
+          "type": "library"
+        },
+        {
+          "id": "ROOM_3_04",
+          "name": "Archives & Historical Manuscripts",
+          "code": "304",
+          "x": 300, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 300, "y": 470 },
+          "type": "archive"
+        },
+        {
+          "id": "BRIDGE_3",
+          "name": "Central Commons & Reading Bridge",
+          "code": "3-BRIDGE",
+          "x": 450, "y": 280, "width": 300, "height": 180,
+          "door": { "x": 600, "y": 370 },
+          "type": "bridge"
+        },
+        {
+          "id": "ROOM_3_05",
+          "name": "AI & Autonomous Robotics Research Lab",
+          "code": "305",
+          "x": 770, "y": 130, "width": 190, "height": 160,
+          "door": { "x": 890, "y": 290 },
+          "type": "lab"
+        },
+        {
+          "id": "ROOM_3_06",
+          "name": "HPC Supercomputing Cluster Facility",
+          "code": "306",
+          "x": 770, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 900, "y": 470 },
+          "type": "server"
+        },
+        {
+          "id": "ROOM_3_07",
+          "name": "Embedded Systems Workshop",
+          "code": "307",
+          "x": 950, "y": 240, "width": 130, "height": 100,
+          "door": { "x": 950, "y": 290 },
+          "type": "lab"
+        },
+        {
+          "id": "ROOM_3_08",
+          "name": "Server Cooling & UPS Backup Vault",
+          "code": "308",
+          "x": 950, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 950, "y": 470 },
+          "type": "utility"
+        }
+      ]
+    },
+    "4": {
+      "level": 4,
+      "short_name": "4F",
+      "display_name": "Fourth Floor (Level 4 - Top Floor)",
+      "description": "Executive Boardroom, Dean Suite, Grand Auditorium, and Rooftop access.",
+      "exits": [],
+      "rooms": [
+        {
+          "id": "ROOM_4_01",
+          "name": "Executive Boardroom",
+          "code": "401",
+          "x": 120, "y": 240, "width": 130, "height": 120,
+          "door": { "x": 250, "y": 300 },
+          "type": "executive"
+        },
+        {
+          "id": "ROOM_4_02",
+          "name": "Dean & Chancellor Executive Suite",
+          "code": "402",
+          "x": 120, "y": 390, "width": 130, "height": 110,
+          "door": { "x": 250, "y": 445 },
+          "type": "executive"
+        },
+        {
+          "id": "ROOM_4_03",
+          "name": "VIP Delegation Lounge",
+          "code": "403",
+          "x": 120, "y": 520, "width": 130, "height": 70,
+          "door": { "x": 250, "y": 555 },
+          "type": "lounge"
+        },
+        {
+          "id": "ROOM_4_04",
+          "name": "Rooftop Access & Restrooms West",
+          "code": "404",
+          "x": 300, "y": 130, "width": 130, "height": 100,
+          "door": { "x": 300, "y": 180 },
+          "type": "utility"
+        },
+        {
+          "id": "ROOM_4_05",
+          "name": "Executive Secretariat & Archive",
+          "code": "405",
+          "x": 300, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 300, "y": 470 },
+          "type": "office"
+        },
+        {
+          "id": "BRIDGE_4",
+          "name": "Executive Skylight Mezzanine",
+          "code": "4-BRIDGE",
+          "x": 450, "y": 280, "width": 300, "height": 180,
+          "door": { "x": 600, "y": 370 },
+          "type": "bridge"
+        },
+        {
+          "id": "ROOM_4_06",
+          "name": "Grand Block A Auditorium (250 Capacity)",
+          "code": "406",
+          "x": 770, "y": 130, "width": 310, "height": 260,
+          "door": { "x": 890, "y": 390 },
+          "type": "auditorium"
+        },
+        {
+          "id": "ROOM_4_07",
+          "name": "Audio-Visual Production & Control Booth",
+          "code": "407",
+          "x": 770, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 900, "y": 470 },
+          "type": "media"
+        },
+        {
+          "id": "ROOM_4_08",
+          "name": "Auditorium Backstage & Green Room",
+          "code": "408",
+          "x": 950, "y": 420, "width": 130, "height": 170,
+          "door": { "x": 950, "y": 470 },
+          "type": "backstage"
+        }
+      ]
+    }
+  },
+  "corridor_network": {
+    "segments": [
+      { "id": "CORR_WEST_MAIN", "from": { "x": 275, "y": 175 }, "to": { "x": 275, "y": 555 }, "width": 40 },
+      { "id": "CORR_EAST_MAIN", "from": { "x": 925, "y": 175 }, "to": { "x": 925, "y": 555 }, "width": 40 },
+      { "id": "CORR_CENTRAL_SPINE", "from": { "x": 275, "y": 370 }, "to": { "x": 925, "y": 370 }, "width": 44 },
+      { "id": "CORR_WEST_STAIR_CONNECTOR", "from": { "x": 170, "y": 175 }, "to": { "x": 275, "y": 175 }, "width": 30 },
+      { "id": "CORR_EAST_STAIR_CONNECTOR", "from": { "x": 925, "y": 175 }, "to": { "x": 1030, "y": 175 }, "width": 30 },
+      { "id": "CORR_GROUND_MAIN_EXIT", "from": { "x": 600, "y": 370 }, "to": { "x": 600, "y": 620 }, "width": 50, "floor_only": 0 },
+      { "id": "CORR_GROUND_WEST_EXIT", "from": { "x": 275, "y": 370 }, "to": { "x": 100, "y": 370 }, "width": 36, "floor_only": 0 },
+      { "id": "CORR_GROUND_EAST_EXIT", "from": { "x": 925, "y": 370 }, "to": { "x": 1100, "y": 370 }, "width": 36, "floor_only": 0 }
+    ]
+  }
+}
+

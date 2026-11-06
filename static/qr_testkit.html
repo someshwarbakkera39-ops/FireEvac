@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Physical QR Code Testing Kit | Block A Facility Evacuation System</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+      padding: 20px;
+    }
+    .print-bar {
+      max-width: 900px;
+      margin: 0 auto 20px auto;
+      background: #1e293b;
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-print {
+      background: #16a34a;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .sheet-grid {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    .qr-card {
+      background: #ffffff;
+      border: 2px dashed #94a3b8;
+      border-radius: 8px;
+      padding: 16px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      break-inside: avoid;
+    }
+    .card-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .facility-tag {
+      font-size: 9px;
+      font-weight: 900;
+      color: #2563eb;
+      letter-spacing: 0.8px;
+    }
+    .floor-pill {
+      font-size: 9px;
+      font-weight: 800;
+      background: #2563eb;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .card-sub {
+      font-size: 10px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .qr-svg-wrap {
+      background: #ffffff;
+      padding: 6px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .payload-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      font-weight: bold;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .meta-footer {
+      font-size: 9px;
+      color: #64748b;
+      line-height: 1.3;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .print-bar { display: none; }
+      .sheet-grid { max-width: 100%; gap: 10px; }
+      .qr-card { border: 1px solid #94a3b8; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <div>
+      <h2 style="margin: 0; font-size: 16px;">Physical Test Kit: Block A Stationary QR Markers</h2>
+      <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+        15 stationary checkpoints across all 5 elevation levels (Ground to Floor 4).
+      </div>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨️ Print Test Kit (A4)</button>
+  </div>
+
+  <div class="sheet-grid">
+    
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 0</span>
+          </div>
+          <div class="card-title">Central Atrium Portal</div>
+          <div class="card-sub">Ground Floor Central Atrium Wall Marker</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="38" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="60" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_G_ATRIUM</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_LOBBY_SOUTH</div>
+            <div><strong>Canvas:</strong> (600.0, 480.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 0</span>
+          </div>
+          <div class="card-title">Admin & Accounts G-101</div>
+          <div class="card-sub">Admin Office Room Door Marker</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="38" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="68" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_G_ADMIN</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_G_01</div>
+            <div><strong>Canvas:</strong> (250.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 0</span>
+          </div>
+          <div class="card-title">Cafeteria G-106</div>
+          <div class="card-sub">Cafeteria Main Entrance Pillar</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="40" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="64" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_G_CAFE</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_G_06</div>
+            <div><strong>Canvas:</strong> (890.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 1</span>
+          </div>
+          <div class="card-title">Faculty Dept 101</div>
+          <div class="card-sub">Faculty Department Wing A Wall Checkpoint</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="36" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="66" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_1_FACULTY</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_1_01</div>
+            <div><strong>Canvas:</strong> (250.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 1</span>
+          </div>
+          <div class="card-title">CS Software Lab 106</div>
+          <div class="card-sub">CS Software Lab Entrance Plaque</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="42" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="60" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_1_CSLAB</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_1_06</div>
+            <div><strong>Canvas:</strong> (890.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 1</span>
+          </div>
+          <div class="card-title">Skybridge Center</div>
+          <div class="card-sub">First Floor Skybridge Exhibition Walkway Marker</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="46" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="72" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_1_BRIDGE</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> N1_C_CENTER</div>
+            <div><strong>Canvas:</strong> (600.0, 370.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 2</span>
+          </div>
+          <div class="card-title">Lecture Theater 201</div>
+          <div class="card-sub">Smart Lecture Hall 201 Doorway</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="44" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="60" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_2_LECTURE</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_2_01</div>
+            <div><strong>Canvas:</strong> (250.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 2</span>
+          </div>
+          <div class="card-title">Seminar Hall 206</div>
+          <div class="card-sub">Multipurpose Seminar Hall 206 Door</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="48" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="72" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_2_SEMINAR</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_2_06</div>
+            <div><strong>Canvas:</strong> (890.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 2</span>
+          </div>
+          <div class="card-title">West Staircase A L2</div>
+          <div class="card-sub">Staircase A Landing Checkpoint Floor 2</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="46" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="68" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_2_STAIR_A</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> STAIR_A_2</div>
+            <div><strong>Canvas:</strong> (170.0, 175.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 2</span>
+          </div>
+          <div class="card-title">East Staircase B L2</div>
+          <div class="card-sub">Staircase B Landing Checkpoint Floor 2</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="48" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="70" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_2_STAIR_B</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> STAIR_B_2</div>
+            <div><strong>Canvas:</strong> (1030.0, 175.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 3</span>
+          </div>
+          <div class="card-title">Library Stacks 301</div>
+          <div class="card-sub">Central Department Library Check-in Station</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="48" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="64" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_3_LIBRARY</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_3_01</div>
+            <div><strong>Canvas:</strong> (250.0, 320.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 3</span>
+          </div>
+          <div class="card-title">AI & Robotics Lab 305</div>
+          <div class="card-sub">AI & Autonomous Robotics Lab Entry Door</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="36" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="62" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_3_AILAB</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_3_05</div>
+            <div><strong>Canvas:</strong> (890.0, 290.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 3</span>
+          </div>
+          <div class="card-title">HPC Facility 306</div>
+          <div class="card-sub">HPC Supercomputing Cluster Vault Wall</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="36" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="74" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_3_HPC</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_3_06</div>
+            <div><strong>Canvas:</strong> (900.0, 470.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 4</span>
+          </div>
+          <div class="card-title">Grand Auditorium 406</div>
+          <div class="card-sub">Grand Auditorium Main Foyer Column</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="36" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="60" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_4_AUDITORIUM</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_4_06</div>
+            <div><strong>Canvas:</strong> (890.0, 390.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+        <div class="qr-card">
+          <div class="card-header">
+            <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+            <span class="floor-pill">LEVEL 4</span>
+          </div>
+          <div class="card-title">Boardroom 401</div>
+          <div class="card-sub">Executive Boardroom Entrance Plaque</div>
+          <div class="qr-svg-wrap">
+            
+    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Position Detection Squares -->
+      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
+
+      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
+      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
+      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
+
+      <!-- Timing & Data Matrix Cells -->
+      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
+
+      <!-- Center Alignment Pattern -->
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
+      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
+      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
+
+      <!-- Unique Identification Pattern -->
+      <rect x="44" y="20" width="6" height="6" fill="#0f172a"/>
+      <rect x="40" y="68" width="6" height="6" fill="#0f172a"/>
+      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
+      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
+      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
+      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
+    </svg>
+    
+          </div>
+          <div class="payload-box">
+            <code>PAYLOAD: QR_4_BOARDROOM</code>
+          </div>
+          <div class="meta-footer">
+            <div><strong>Node:</strong> NODE_ROOM_4_01</div>
+            <div><strong>Canvas:</strong> (250.0, 300.0)</div>
+            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+          </div>
+        </div>
+        
+  </div>
+</body>
+</html>

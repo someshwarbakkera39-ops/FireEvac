@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 2 Output | Dynamic Dijkstra Routing & Hazard Engine</title>
+  <link rel="stylesheet" href="static/css/style.css" />
+  <style>
+    .scenario-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .scenario-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .scenario-btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+    }
+    .scenario-btn.active {
+      background: rgba(37, 99, 235, 0.25);
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    .instruction-step {
+      display: flex;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      background: #1e293b;
+      border-left: 3px solid #16a34a;
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+    .step-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #16a34a;
+      color: #fff;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+    .step-content strong {
+      color: #4ade80;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .step-content p {
+      color: #cbd5e1;
+      margin: 0;
+    }
+    .hazard-tag {
+      background: rgba(220, 38, 38, 0.2);
+      border: 1px solid #dc2626;
+      color: #fca5a5;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 3px 6px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-badge">ROUTING ENGINE</div>
+      <div class="brand-titles">
+        <h1>
+          Block A Dynamic Dijkstra Evacuation Engine
+          <span class="phase-pill" id="phasePill" style="background: rgba(37, 99, 235, 0.2); color: #60a5fa; border-color: rgba(96, 165, 250, 0.4);">
+            Phase 2: Graph & Path Optimization Verified
+          </span>
+        </h1>
+        <p>Mathematical Graph G = (V, E) with Real-Time Hazard Edge-Exclusion & Multi-Floor Descent</p>
+      </div>
+    </div>
+
+    <div class="header-status-bar">
+      <div class="status-indicator">
+        <div class="pulse-dot"></div>
+        <span>Dijkstra Engine Online</span>
+      </div>
+      <div class="status-indicator" style="border-color: #16a34a;">
+        <span style="color: #4ade80; font-weight: bold;">Safety Constraint:</span>
+        <span>Zero-Hazard Clearance</span>
+      </div>
+      <a href="preview_phase1.html" class="canvas-btn" style="text-decoration:none; padding:5px 10px;">← Phase 1 Floor View</a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Floor Navigation Bar -->
+    <nav class="floor-nav-bar" aria-label="Floor selection">
+      <span class="nav-label">Floors</span>
+      <button class="floor-btn" data-floor="4">
+        <span class="btn-num">4F</span>
+        <span class="btn-desc">Auditorium</span>
+      </button>
+      <button class="floor-btn active" data-floor="3">
+        <span class="btn-num">3F</span>
+        <span class="btn-desc">Library/AI</span>
+      </button>
+      <button class="floor-btn" data-floor="2">
+        <span class="btn-num">2F</span>
+        <span class="btn-desc">Lectures</span>
+      </button>
+      <button class="floor-btn" data-floor="1">
+        <span class="btn-num">1F</span>
+        <span class="btn-desc">Faculty/Lab</span>
+      </button>
+      <button class="floor-btn" data-floor="0">
+        <span class="btn-num">G</span>
+        <span class="btn-desc">Exits & Admin</span>
+      </button>
+    </nav>
+
+    <!-- Canvas Workspace -->
+    <main class="canvas-workspace">
+      <!-- Floating Navigation Controls -->
+      <div class="canvas-floating-controls">
+        <button class="canvas-btn" id="btnZoomIn" title="Zoom In (+)">🔍 +</button>
+        <button class="canvas-btn" id="btnZoomOut" title="Zoom Out (-)">🔍 −</button>
+        <button class="canvas-btn" id="btnResetView" title="Reset View">⟲ Reset</button>
+        <span style="width: 1px; background: #334155; margin: 0 4px;"></span>
+        <button class="canvas-btn" id="btnRecalculate" style="background:#16a34a; border-color:#22c55e; color:#fff;">
+          ⚡ Recalculate Path
+        </button>
+        <span id="currentFloorTag" style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; padding: 0 6px;">
+          THIRD FLOOR (LEVEL 3)
+        </span>
+      </div>
+
+      <!-- SVG Map Canvas Container -->
+      <div id="floorMapContainer" style="width: 100%; height: 100%;"></div>
+
+      <!-- Floating Visual Safety Palette Legend (Section 9) -->
+      <div class="canvas-floating-legend">
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #16a34a;"></div>
+          <span>Safe Path: Bright Green (#16a34a)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #dc2626;"></div>
+          <span>Hazard/Fire Zone: Vivid Red (#dc2626)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #2563eb;"></div>
+          <span>Current Location: Electric Blue (#2563eb)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #f59e0b;"></div>
+          <span>Stairwells & Descent: Amber (#f59e0b)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-chip" style="background: #64748b;"></div>
+          <span>Building Geometry: Neutral Slate (#64748b)</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Control Panel: Scenarios, Simulation, Guidance -->
+    <aside class="sidebar-panel" style="width: 390px;">
+      <div class="sidebar-header">
+        <h2>Phase 2: Route Optimization Engine</h2>
+        <p>Interactive test bench for the 5 Mandatory Blueprint Scenarios.</p>
+      </div>
+
+      <!-- Live Route Performance Metrics -->
+      <div class="sidebar-section">
+        <div class="section-title">Live Route Optimization Metrics</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="num" id="metricDistance">0 m</div>
+            <div class="lbl">Evacuation Distance</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="metricTime">0s</div>
+            <div class="lbl">Est. Clearance Time</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="metricFloors">0</div>
+            <div class="lbl">Floors Traversed</div>
+          </div>
+          <div class="metric-card">
+            <div class="num" id="metricExit" style="font-size:14px; color:#4ade80; margin-top:4px;">None</div>
+            <div class="lbl">Designated Safe Exit</div>
+          </div>
+        </div>
+        <div id="routeStatusBanner" style="margin-top:8px; padding:6px 10px; border-radius:6px; font-size:11px; background:rgba(22, 163, 74, 0.15); border:1px solid #16a34a; color:#4ade80;">
+          Optimal Route Cleared & Verified
+        </div>
+      </div>
+
+      <!-- Mandatory Scenario Presets (Blueprint Section 13) -->
+      <div class="sidebar-section">
+        <div class="section-title">Blueprint Scenarios (Section 13)</div>
+        <div class="scenario-btn-group">
+          <button class="scenario-btn active" id="btnScen1">
+            <span>🟢</span>
+            <div>
+              <div>1. Standard Baseline Evacuation</div>
+              <div style="font-size:10px; color:#94a3b8;">Normal conditions from 4F Auditorium to ground exit</div>
+            </div>
+          </button>
+          <button class="scenario-btn" id="btnScen2">
+            <span>🚨</span>
+            <div>
+              <div>2. Ground Main Exit Blocked</div>
+              <div style="font-size:10px; color:#94a3b8;">South exit engulfed; redirects to West/East fire exits</div>
+            </div>
+          </button>
+          <button class="scenario-btn" id="btnScen3">
+            <span>🔥</span>
+            <div>
+              <div>3. Staircase B Engulfed on Floor 2</div>
+              <div style="font-size:10px; color:#94a3b8;">Upper East occupants rerouted across bridge to Stair A</div>
+            </div>
+          </button>
+          <button class="scenario-btn" id="btnScen4">
+            <span>⚠️</span>
+            <div>
+              <div>4. Staircase A Engulfed on Floor 1</div>
+              <div style="font-size:10px; color:#94a3b8;">Upper West occupants rerouted across bridge to Stair B</div>
+            </div>
+          </button>
+          <button class="scenario-btn" id="btnScen5">
+            <span>⛔</span>
+            <div>
+              <div>5. Multi-Hazard Complex Scenario</div>
+              <div style="font-size:10px; color:#94a3b8;">Multiple corridor blocks & stair failure concurrently</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Starting Location Selector -->
+      <div class="sidebar-section">
+        <div class="section-title">Starting Location Configuration</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:11px; color:#94a3b8;">Select Starting Room / Space:</label>
+          <select id="startNodeSelect" style="background:#1e293b; border:1px solid #334155; color:#f8fafc; padding:6px; border-radius:6px; font-size:11px; width:100%;">
+            <optgroup label="Floor 4 (Top Floor)">
+              <option value="NODE_ROOM_4_06">ROOM 406 - Grand Auditorium</option>
+              <option value="NODE_ROOM_4_01">ROOM 401 - Executive Boardroom</option>
+              <option value="NODE_ROOM_4_02">ROOM 402 - Dean Executive Suite</option>
+            </optgroup>
+            <optgroup label="Floor 3 (Library & Research)">
+              <option value="NODE_ROOM_3_05" selected>ROOM 305 - AI & Robotics Research Lab</option>
+              <option value="NODE_ROOM_3_01">ROOM 301 - Central Library Stacks</option>
+              <option value="NODE_ROOM_3_06">ROOM 306 - HPC Supercomputing Cluster</option>
+            </optgroup>
+            <optgroup label="Floor 2 (Lectures & Studios)">
+              <option value="NODE_ROOM_2_01">ROOM 201 - Smart Lecture Hall</option>
+              <option value="NODE_ROOM_2_06">ROOM 206 - Multipurpose Seminar Hall</option>
+            </optgroup>
+            <optgroup label="Floor 1 (Faculty & Labs)">
+              <option value="NODE_ROOM_1_06">ROOM 106 - CS Software Lab 101</option>
+              <option value="NODE_ROOM_1_01">ROOM 101 - Faculty Department Office A</option>
+            </optgroup>
+            <optgroup label="Ground Floor (Administration)">
+              <option value="NODE_ROOM_G_01">ROOM G-101 - Admin & Accounts Office</option>
+              <option value="NODE_ROOM_G_06">ROOM G-106 - Cafeteria & Dining Hall</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="font-size:11px; color:#94a3b8; margin-bottom:4px;">Active Simulated Hazards:</div>
+          <div id="activeHazardsList" style="display:flex; flex-wrap:wrap; gap:4px; min-height:22px;">
+            <span style="font-size:10px; color:#64748b; font-style:italic;">No active hazards (Normal baseline)</span>
+          </div>
+          <button id="btnClearHazards" class="canvas-btn" style="margin-top:8px; font-size:11px; width:100%; justify-content:center;">
+            Clear All Hazards
+          </button>
+        </div>
+      </div>
+
+      <!-- Turn-by-Turn Dynamic Guidance -->
+      <div class="sidebar-section" style="flex:1;">
+        <div class="section-title">
+          <span>Turn-by-Turn Navigation Directives</span>
+          <span style="color:#4ade80; font-size:10px; font-weight:normal;">Real-Time</span>
+        </div>
+        <div id="instructionsContainer" style="display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Digital Twin Graph Layer Toggles -->
+      <div class="sidebar-section">
+        <div class="section-title">Topology & Display Toggles</div>
+        <div class="layer-toggle-list">
+          <label class="toggle-item">
+            <span>Show Mathematical Graph (V & E)</span>
+            <input type="checkbox" id="toggleGraph" />
+          </label>
+          <label class="toggle-item">
+            <span>Show Safe Evacuation Path</span>
+            <input type="checkbox" id="togglePath" checked />
+          </label>
+          <label class="toggle-item">
+            <span>Show Active Hazard Pulses</span>
+            <input type="checkbox" id="toggleHazards" checked />
+          </label>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Scripts -->
+  <script src="static/js/floor_plans.js"></script>
+  <script src="static/js/map_renderer.js"></script>
+  <script src="static/js/dijkstra.js"></script>
+  <script>
+    // Embedded standalone graph generator for offline 0ms execution
+    function generateStandaloneGraph() {
+      const nodes = {};
+      const edges = [];
+
+      for (let f = 0; f < 5; f++) {
+        // West corridor
+        nodes[`N${f}_W_NORTH`] = { id: `N${f}_W_NORTH`, name: `Floor ${f} West North Corridor`, floor: f, x: 275, y: 175, type: 'corridor' };
+        nodes[`N${f}_W_MID_N`] = { id: `N${f}_W_MID_N`, name: `Floor ${f} West Mid-North`, floor: f, x: 275, y: 290, type: 'corridor' };
+        nodes[`N${f}_W_CENTER`] = { id: `N${f}_W_CENTER`, name: `Floor ${f} West Central Junction`, floor: f, x: 275, y: 370, type: 'corridor' };
+        nodes[`N${f}_W_MID_S`] = { id: `N${f}_W_MID_S`, name: `Floor ${f} West Mid-South`, floor: f, x: 275, y: 470, type: 'corridor' };
+        nodes[`N${f}_W_SOUTH`] = { id: `N${f}_W_SOUTH`, name: `Floor ${f} West South Corridor`, floor: f, x: 275, y: 550, type: 'corridor' };
+
+        edges.push({ from: `N${f}_W_NORTH`, to: `N${f}_W_MID_N`, weight: 115 });
+        edges.push({ from: `N${f}_W_MID_N`, to: `N${f}_W_CENTER`, weight: 80 });
+        edges.push({ from: `N${f}_W_CENTER`, to: `N${f}_W_MID_S`, weight: 100 });
+        edges.push({ from: `N${f}_W_MID_S`, to: `N${f}_W_SOUTH`, weight: 80 });
+
+        // East corridor
+        nodes[`N${f}_E_NORTH`] = { id: `N${f}_E_NORTH`, name: `Floor ${f} East North Corridor`, floor: f, x: 925, y: 175, type: 'corridor' };
+        nodes[`N${f}_E_MID_N`] = { id: `N${f}_E_MID_N`, name: `Floor ${f} East Mid-North`, floor: f, x: 925, y: 290, type: 'corridor' };
+        nodes[`N${f}_E_CENTER`] = { id: `N${f}_E_CENTER`, name: `Floor ${f} East Central Junction`, floor: f, x: 925, y: 370, type: 'corridor' };
+        nodes[`N${f}_E_MID_S`] = { id: `N${f}_E_MID_S`, name: `Floor ${f} East Mid-South`, floor: f, x: 925, y: 470, type: 'corridor' };
+        nodes[`N${f}_E_SOUTH`] = { id: `N${f}_E_SOUTH`, name: `Floor ${f} East South Corridor`, floor: f, x: 925, y: 550, type: 'corridor' };
+
+        edges.push({ from: `N${f}_E_NORTH`, to: `N${f}_E_MID_N`, weight: 115 });
+        edges.push({ from: `N${f}_E_MID_N`, to: `N${f}_E_CENTER`, weight: 80 });
+        edges.push({ from: `N${f}_E_CENTER`, to: `N${f}_E_MID_S`, weight: 100 });
+        edges.push({ from: `N${f}_E_MID_S`, to: `N${f}_E_SOUTH`, weight: 80 });
+
+        // Central Spine
+        nodes[`N${f}_C_WEST`] = { id: `N${f}_C_WEST`, name: `Floor ${f} Central Bridge West`, floor: f, x: 450, y: 370, type: 'corridor' };
+        nodes[`N${f}_C_CENTER`] = { id: `N${f}_C_CENTER`, name: `Floor ${f} Central Bridge Midpoint`, floor: f, x: 600, y: 370, type: 'corridor' };
+        nodes[`N${f}_C_EAST`] = { id: `N${f}_C_EAST`, name: `Floor ${f} Central Bridge East`, floor: f, x: 750, y: 370, type: 'corridor' };
+
+        edges.push({ from: `N${f}_W_CENTER`, to: `N${f}_C_WEST`, weight: 175 });
+        edges.push({ from: `N${f}_C_WEST`, to: `N${f}_C_CENTER`, weight: 150 });
+        edges.push({ from: `N${f}_C_CENTER`, to: `N${f}_C_EAST`, weight: 150 });
+        edges.push({ from: `N${f}_C_EAST`, to: `N${f}_E_CENTER`, weight: 175 });
+
+        // Stairs
+        nodes[`STAIR_A_${f}`] = { id: `STAIR_A_${f}`, name: `Staircase A Core (L${f})`, floor: f, x: 170, y: 175, type: 'stair' };
+        nodes[`STAIR_B_${f}`] = { id: `STAIR_B_${f}`, name: `Staircase B Core (L${f})`, floor: f, x: 1030, y: 175, type: 'stair' };
+
+        edges.push({ from: `STAIR_A_${f}`, to: `N${f}_W_NORTH`, weight: 105 });
+        edges.push({ from: `STAIR_B_${f}`, to: `N${f}_E_NORTH`, weight: 105 });
+
+        // Rooms on this floor
+        const flData = window.BLOCK_A_MODEL.floors[f];
+        if (flData && flData.rooms) {
+          flData.rooms.forEach(r => {
+            const rNode = `NODE_${r.id}`;
+            nodes[rNode] = { id: rNode, name: `[${r.code}] ${r.name}`, floor: f, x: r.door.x, y: r.door.y, type: 'room' };
+            // Connect to nearest corridor
+            const corr = r.x < 500 ? `N${f}_W_MID_N` : `N${f}_E_MID_N`;
+            edges.push({ from: rNode, to: corr, weight: 35 });
+          });
+        }
+      }
+
+      // Vertical stair connections
+      for (let f = 0; f < 4; f++) {
+        edges.push({ from: `STAIR_A_${f}`, to: `STAIR_A_${f+1}`, weight: 28 });
+        edges.push({ from: `STAIR_B_${f}`, to: `STAIR_B_${f+1}`, weight: 28 });
+      }
+
+      // Ground Floor Exits
+      nodes["NODE_EXIT_G_MAIN"] = { id: "NODE_EXIT_G_MAIN", name: "Exit 1: Main South Exit", floor: 0, x: 600, y: 620, type: "exit" };
+      nodes["NODE_EXIT_G_WEST"] = { id: "NODE_EXIT_G_WEST", name: "Exit 2: West Fire Exit", floor: 0, x: 100, y: 370, type: "exit" };
+      nodes["NODE_EXIT_G_EAST"] = { id: "NODE_EXIT_G_EAST", name: "Exit 3: East Fire Exit", floor: 0, x: 1100, y: 370, type: "exit" };
+
+      edges.push({ from: "N0_C_CENTER", to: "NODE_EXIT_G_MAIN", weight: 250 });
+      edges.push({ from: "N0_W_CENTER", to: "NODE_EXIT_G_WEST", weight: 175 });
+      edges.push({ from: "N0_E_CENTER", to: "NODE_EXIT_G_EAST", weight: 175 });
+
+      return { nodes, edges };
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const graphData = generateStandaloneGraph();
+      const clientDijkstra = new ClientDijkstra(graphData);
+
+      const renderer = new FloorMapRenderer("floorMapContainer", {
+        initialFloor: 3,
+        onRoomClick: (room, floor) => {
+          const roomNodeId = `NODE_${room.id}`;
+          const select = document.getElementById("startNodeSelect");
+          let opt = select.querySelector(`option[value="${roomNodeId}"]`);
+          if (!opt) {
+            opt = document.createElement("option");
+            opt.value = roomNodeId;
+            opt.textContent = `[${room.code}] ${room.name}`;
+            select.appendChild(opt);
+          }
+          select.value = roomNodeId;
+          runEvacuationCalculation();
+        }
+      });
+
+      renderer.setGraphData(graphData);
+
+      let currentBlockedNodes = [];
+      let currentBlockedEdges = [];
+
+      const floorButtons = document.querySelectorAll(".floor-btn");
+      const currentFloorTag = document.getElementById("currentFloorTag");
+      const startSelect = document.getElementById("startNodeSelect");
+      const metricDistance = document.getElementById("metricDistance");
+      const metricTime = document.getElementById("metricTime");
+      const metricFloors = document.getElementById("metricFloors");
+      const metricExit = document.getElementById("metricExit");
+      const routeStatusBanner = document.getElementById("routeStatusBanner");
+      const instructionsContainer = document.getElementById("instructionsContainer");
+      const activeHazardsList = document.getElementById("activeHazardsList");
+
+      function updateFloorUI(floorLevel) {
+        floorLevel = parseInt(floorLevel, 10);
+        renderer.setFloor(floorLevel);
+        floorButtons.forEach(btn => {
+          btn.classList.toggle("active", parseInt(btn.dataset.floor, 10) === floorLevel);
+        });
+        const fl = window.BLOCK_A_MODEL.floors[floorLevel];
+        currentFloorTag.textContent = `${fl.name.toUpperCase()} (LEVEL ${fl.level})`;
+      }
+
+      floorButtons.forEach(btn => {
+        btn.addEventListener("click", () => updateFloorUI(btn.dataset.floor));
+      });
+
+      document.getElementById("btnZoomIn").addEventListener("click", () => renderer.zoomIn());
+      document.getElementById("btnZoomOut").addEventListener("click", () => renderer.zoomOut());
+      document.getElementById("btnResetView").addEventListener("click", () => renderer.resetView());
+
+      document.getElementById("toggleGraph").addEventListener("change", (e) => renderer.toggleLayer("graph", e.target.checked));
+      document.getElementById("togglePath").addEventListener("change", (e) => renderer.toggleLayer("path", e.target.checked));
+      document.getElementById("toggleHazards").addEventListener("change", (e) => renderer.toggleLayer("hazards", e.target.checked));
+
+      function runEvacuationCalculation() {
+        const startNode = startSelect.value;
+        renderer.setHazards(currentBlockedNodes, currentBlockedEdges);
+
+        if (currentBlockedNodes.length === 0 && currentBlockedEdges.length === 0) {
+          activeHazardsList.innerHTML = `<span style="font-size:10px; color:#64748b; font-style:italic;">No active hazards (Normal baseline)</span>`;
+        } else {
+          activeHazardsList.innerHTML = "";
+          currentBlockedNodes.forEach(nid => {
+            const span = document.createElement("span");
+            span.className = "hazard-tag";
+            span.innerHTML = `🔥 ${nid}`;
+            activeHazardsList.appendChild(span);
+          });
+          currentBlockedEdges.forEach(e => {
+            const span = document.createElement("span");
+            span.className = "hazard-tag";
+            span.innerHTML = `⛔ ${e}`;
+            activeHazardsList.appendChild(span);
+          });
+        }
+
+        const res = clientDijkstra.calculateRoute(startNode, {
+          blockedNodes: currentBlockedNodes,
+          blockedEdges: currentBlockedEdges
+        });
+
+        if (res.success) {
+          metricDistance.textContent = `${res.distanceMeters} m`;
+          metricTime.textContent = `${res.estimatedTimeSeconds}s`;
+          metricFloors.textContent = new Set(res.pathDetails.map(n => n.floor)).size;
+          metricExit.textContent = res.targetExitName;
+
+          if (currentBlockedNodes.length > 0 || currentBlockedEdges.length > 0) {
+            routeStatusBanner.style.background = "rgba(245, 158, 11, 0.15)";
+            routeStatusBanner.style.borderColor = "#f59e0b";
+            routeStatusBanner.style.color = "#fbbf24";
+            routeStatusBanner.textContent = "⚠ Dynamic Hazard Bypass Active: Path Rerouted!";
+          } else {
+            routeStatusBanner.style.background = "rgba(22, 163, 74, 0.15)";
+            routeStatusBanner.style.borderColor = "#16a34a";
+            routeStatusBanner.style.color = "#4ade80";
+            routeStatusBanner.textContent = "Optimal Shortest Route Cleared & Verified";
+          }
+
+          renderer.setRoute(res.path, startNode);
+
+          const startFloor = graphData.nodes[startNode].floor;
+          if (renderer.currentFloor !== startFloor) {
+            updateFloorUI(startFloor);
+          }
+
+          instructionsContainer.innerHTML = "";
+          res.instructions.forEach(inst => {
+            const div = document.createElement("div");
+            div.className = "instruction-step";
+            div.innerHTML = `
+              <div class="step-badge">${inst.step}</div>
+              <div class="step-content">
+                <strong>${inst.title}</strong>
+                <p>${inst.text}</p>
+              </div>
+            `;
+            instructionsContainer.appendChild(div);
+          });
+        } else {
+          routeStatusBanner.style.background = "rgba(220, 38, 38, 0.2)";
+          routeStatusBanner.style.borderColor = "#dc2626";
+          routeStatusBanner.style.color = "#fca5a5";
+          routeStatusBanner.textContent = `❌ ${res.error}`;
+          instructionsContainer.innerHTML = `
+            <div style="padding:10px; background:#1e293b; border-left:3px solid #dc2626; color:#fca5a5; font-size:11px;">
+              <strong>Evacuation Impassable</strong>
+              <p>${res.error}</p>
+            </div>
+          `;
+          renderer.clearRoute();
+        }
+      }
+
+      const scenarioButtons = [
+        document.getElementById("btnScen1"),
+        document.getElementById("btnScen2"),
+        document.getElementById("btnScen3"),
+        document.getElementById("btnScen4"),
+        document.getElementById("btnScen5")
+      ];
+
+      function setScenario(scenIdx) {
+        scenarioButtons.forEach((b, i) => b.classList.toggle("active", i === scenIdx));
+
+        if (scenIdx === 0) {
+          currentBlockedNodes = [];
+          currentBlockedEdges = [];
+          startSelect.value = "NODE_ROOM_4_06";
+          updateFloorUI(4);
+        } else if (scenIdx === 1) {
+          currentBlockedNodes = ["NODE_EXIT_G_MAIN"];
+          currentBlockedEdges = [];
+          startSelect.value = "NODE_ROOM_G_01";
+          updateFloorUI(0);
+        } else if (scenIdx === 2) {
+          currentBlockedNodes = ["STAIR_B_2", "STAIR_B_1"];
+          currentBlockedEdges = [];
+          startSelect.value = "NODE_ROOM_3_05";
+          updateFloorUI(3);
+        } else if (scenIdx === 3) {
+          currentBlockedNodes = ["STAIR_A_1"];
+          currentBlockedEdges = [];
+          startSelect.value = "NODE_ROOM_4_01";
+          updateFloorUI(4);
+        } else if (scenIdx === 4) {
+          currentBlockedNodes = ["STAIR_B_2", "NODE_EXIT_G_MAIN"];
+          currentBlockedEdges = ["N3_W_CENTER--N3_C_WEST"];
+          startSelect.value = "NODE_ROOM_3_05";
+          updateFloorUI(3);
+        }
+
+        runEvacuationCalculation();
+      }
+
+      scenarioButtons.forEach((b, idx) => {
+        b.addEventListener("click", () => setScenario(idx));
+      });
+
+      startSelect.addEventListener("change", () => runEvacuationCalculation());
+      document.getElementById("btnRecalculate").addEventListener("click", () => runEvacuationCalculation());
+      document.getElementById("btnClearHazards").addEventListener("click", () => {
+        currentBlockedNodes = [];
+        currentBlockedEdges = [];
+        scenarioButtons.forEach(b => b.classList.remove("active"));
+        scenarioButtons[0].classList.add("active");
+        runEvacuationCalculation();
+      });
+
+      updateFloorUI(3);
+      runEvacuationCalculation();
+    });
+  </script>
+</body>
+</html>
+

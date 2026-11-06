@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest cache
+.pytest_cache/
+
+# Virtual Environment
+venv/
+env/
+.env
+
+# SQLite local testing DB (preserved or committed as seed)
+*.log
