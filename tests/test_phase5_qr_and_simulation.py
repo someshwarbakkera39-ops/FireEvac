@@ -132,3 +132,32 @@ def test_qr_testkit_and_png_badge_assets():
     for pf in png_files:
         assert os.path.getsize(os.path.join(qr_codes_dir, pf)) > 200
 
+def test_25_qr_checkpoints_and_commander_location():
+    client = app.test_client()
+
+    # 1. Verify 25 stationary QR checkpoints across Floors 0-4
+    qr_res = client.get("/api/qr")
+    assert qr_res.status_code == 200
+    qr_data = qr_res.get_json()
+    assert qr_data["status"] == "success"
+    qr_codes = qr_data["qr_codes"]
+    assert len(qr_codes) == 25
+
+    # Check 5 checkpoints per floor
+    floors = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+    for q in qr_codes:
+        fl = q["floor_id"]
+        assert fl in floors
+        floors[fl] += 1
+    for fl, count in floors.items():
+        assert count == 5, f"Floor {fl} has {count} checkpoints instead of 5"
+
+    # 2. Verify Incident Commander location endpoint
+    cmd_res = client.get("/api/commander/location")
+    assert cmd_res.status_code == 200
+    cmd_data = cmd_res.get_json()
+    assert cmd_data["status"] == "success"
+    assert "node_id" in cmd_data["commander"]
+    assert "Security" in cmd_data["commander"]["location_label"] or "G-103" in cmd_data["commander"]["location_label"]
+
+

@@ -92,36 +92,48 @@ def seed_all():
         )
         print(f"[+] Seeded {len(paths_batch)} walkable corridor and stairwell edges.")
 
-    # 4. Seed stationary QR codes
-    qr_count = query_db("SELECT COUNT(*) as count FROM qr_codes", one=True)["count"]
-    if qr_count == 0:
-        qr_data = [
-            # Ground Floor
-            ("QR_G_ATRIUM", "NODE_LOBBY_SOUTH", 0, "Ground Floor Central Atrium Wall Marker", "Central Atrium Portal"),
-            ("QR_G_ADMIN", "NODE_ROOM_G_01", 0, "Admin Office Room Door Marker", "Admin & Accounts G-101"),
-            ("QR_G_CAFE", "NODE_ROOM_G_06", 0, "Cafeteria Main Entrance Pillar", "Cafeteria G-106"),
-            # Floor 1
-            ("QR_1_FACULTY", "NODE_ROOM_1_01", 1, "Faculty Department Wing A Wall Checkpoint", "Faculty Dept 101"),
-            ("QR_1_CSLAB", "NODE_ROOM_1_06", 1, "CS Software Lab Entrance Plaque", "CS Software Lab 106"),
-            ("QR_1_BRIDGE", "N1_C_CENTER", 1, "First Floor Skybridge Exhibition Walkway Marker", "Skybridge Center"),
-            # Floor 2
-            ("QR_2_LECTURE", "NODE_ROOM_2_01", 2, "Smart Lecture Hall 201 Doorway", "Lecture Theater 201"),
-            ("QR_2_SEMINAR", "NODE_ROOM_2_06", 2, "Multipurpose Seminar Hall 206 Door", "Seminar Hall 206"),
-            ("QR_2_STAIR_A", "STAIR_A_2", 2, "Staircase A Landing Checkpoint Floor 2", "West Staircase A L2"),
-            ("QR_2_STAIR_B", "STAIR_B_2", 2, "Staircase B Landing Checkpoint Floor 2", "East Staircase B L2"),
-            # Floor 3
-            ("QR_3_LIBRARY", "NODE_ROOM_3_01", 3, "Central Department Library Check-in Station", "Library Stacks 301"),
-            ("QR_3_AILAB", "NODE_ROOM_3_05", 3, "AI & Autonomous Robotics Lab Entry Door", "AI & Robotics Lab 305"),
-            ("QR_3_HPC", "NODE_ROOM_3_06", 3, "HPC Supercomputing Cluster Vault Wall", "HPC Facility 306"),
-            # Floor 4
-            ("QR_4_AUDITORIUM", "NODE_ROOM_4_06", 4, "Grand Auditorium Main Foyer Column", "Grand Auditorium 406"),
-            ("QR_4_BOARDROOM", "NODE_ROOM_4_01", 4, "Executive Boardroom Entrance Plaque", "Boardroom 401")
-        ]
-        execute_many(
-            "INSERT INTO qr_codes (code_id, node_id, floor_id, description, location_label) VALUES (?, ?, ?, ?, ?)",
-            qr_data
-        )
-        print(f"[+] Seeded {len(qr_data)} stationary QR localization checkpoints.")
+    # 4. Seed stationary QR codes (5 checkpoints per floor = 25 total)
+    qr_data = [
+        # Ground Floor (Level 0)
+        ("QR_G_ATRIUM", "NODE_LOBBY_SOUTH", 0, "Ground Floor Central Atrium Wall Marker", "Central Atrium Portal"),
+        ("QR_G_ADMIN", "NODE_ROOM_G_01", 0, "Admin Office Room Door Marker", "Admin & Accounts G-101"),
+        ("QR_G_CLINIC", "NODE_ROOM_G_02", 0, "First Aid & Clinic Entry Doorway", "First Aid Clinic G-102"),
+        ("QR_G_CAFE", "NODE_ROOM_G_06", 0, "Cafeteria Main Entrance Pillar", "Cafeteria G-106"),
+        ("QR_G_SECURITY", "NODE_ROOM_G_03", 0, "Campus Security Command Doorway", "Security Command G-103"),
+
+        # Floor 1 (Level 1)
+        ("QR_1_FACULTY", "NODE_ROOM_1_01", 1, "Faculty Department Wing A Wall Checkpoint", "Faculty Dept 101"),
+        ("QR_1_CSLAB", "NODE_ROOM_1_06", 1, "CS Software Lab Entrance Plaque", "CS Software Lab 106"),
+        ("QR_1_NETLAB", "NODE_ROOM_1_07", 1, "Advanced Networks & Systems Lab Doorway", "Networks Lab 107"),
+        ("QR_1_BRIDGE", "N1_C_CENTER", 1, "First Floor Skybridge Exhibition Walkway Marker", "Skybridge Center L1"),
+        ("QR_1_STAIR_A", "STAIR_A_1", 1, "West Staircase A Landing Floor 1", "West Staircase A L1"),
+
+        # Floor 2 (Level 2)
+        ("QR_2_LECTURE", "NODE_ROOM_2_01", 2, "Smart Lecture Hall 201 Doorway", "Lecture Theater 201"),
+        ("QR_2_SEMINAR", "NODE_ROOM_2_06", 2, "Multipurpose Seminar Hall 206 Door", "Seminar Hall 206"),
+        ("QR_2_BRIDGE", "N2_C_CENTER", 2, "Level 2 Central Skybridge Walkway", "Skybridge Walkway L2"),
+        ("QR_2_STAIR_A", "STAIR_A_2", 2, "Staircase A Landing Checkpoint Floor 2", "West Staircase A L2"),
+        ("QR_2_STAIR_B", "STAIR_B_2", 2, "Staircase B Landing Checkpoint Floor 2", "East Staircase B L2"),
+
+        # Floor 3 (Level 3)
+        ("QR_3_LIBRARY", "NODE_ROOM_3_01", 3, "Central Department Library Check-in Station", "Library Stacks 301"),
+        ("QR_3_AILAB", "NODE_ROOM_3_05", 3, "AI & Autonomous Robotics Lab Entry Door", "AI & Robotics Lab 305"),
+        ("QR_3_HPC", "NODE_ROOM_3_06", 3, "HPC Supercomputing Cluster Vault Wall", "HPC Facility 306"),
+        ("QR_3_STAIR_A", "STAIR_A_3", 3, "West Staircase A Landing Floor 3", "West Staircase A L3"),
+        ("QR_3_STAIR_B", "STAIR_B_3", 3, "East Staircase B Landing Floor 3", "East Staircase B L3"),
+
+        # Floor 4 (Level 4)
+        ("QR_4_BOARDROOM", "NODE_ROOM_4_01", 4, "Executive Boardroom Entrance Plaque", "Boardroom 401"),
+        ("QR_4_AUDITORIUM", "NODE_ROOM_4_06", 4, "Grand Auditorium Main Foyer Column", "Grand Auditorium 406"),
+        ("QR_4_ROOF_EXIT", "N4_C_CENTER", 4, "Roof Observatory & Skydeck Spine", "Skydeck Access L4"),
+        ("QR_4_STAIR_A", "STAIR_A_4", 4, "West Staircase A Top Landing Floor 4", "West Staircase A L4"),
+        ("QR_4_STAIR_B", "STAIR_B_4", 4, "East Staircase B Top Landing Floor 4", "East Staircase B L4")
+    ]
+    execute_many(
+        "INSERT OR REPLACE INTO qr_codes (code_id, node_id, floor_id, description, location_label) VALUES (?, ?, ?, ?, ?)",
+        qr_data
+    )
+    print(f"[+] Seeded {len(qr_data)} stationary QR localization checkpoints (5 per floor).")
 
     # 5. Seed occupancy simulation records
     occ_count = query_db("SELECT COUNT(*) as count FROM occupancy_sim", one=True)["count"]

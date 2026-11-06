@@ -131,6 +131,39 @@
       padding: 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
+    .qr-chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .qr-chip:hover {
+      background: #0f172a;
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    .qr-chip.active {
+      background: rgba(6, 182, 212, 0.25);
+      border-color: #06b6d4;
+      color: #67e8f9;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+    }
+    @keyframes scanLine {
+      0% { top: 4px; }
+      50% { top: calc(100% - 6px); }
+      100% { top: 4px; }
+    }
   </style>
 </head>
 <body class="public-body">
@@ -214,6 +247,59 @@
     </div>
   </main>
 
+  <!-- Below-Map Indoor Positioning & Live Incident Commander QR Scanner Panel -->
+  <section class="user-inline-positioning-panel" style="background: #0f172a; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b; padding: 14px 16px; margin: 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 16px;">📷</span>
+        <span style="font-size: 13px; font-weight: 800; color: #f8fafc; letter-spacing: 0.3px;">Indoor Floor QR Scanner</span>
+      </div>
+      <button id="btnToggleCameraScanner" style="background: #2563eb; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; box-shadow: 0 2px 8px rgba(37,99,235,0.4);">
+        <span id="btnCameraIcon">📷</span> <span id="btnCameraText">Open Camera</span>
+      </button>
+    </div>
+
+    <!-- Live Inline Camera Box (Initially hidden, toggled via button) -->
+    <div id="inlineCameraBox" style="display: none; background: #020617; border: 1.5px solid #38bdf8; border-radius: 8px; margin-bottom: 12px; position: relative; overflow: hidden; height: 180px;">
+      <video id="inlineCameraVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+      <div id="inlineScannerOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
+        <!-- Targeting reticle -->
+        <div style="width: 130px; height: 130px; border: 2px dashed #38bdf8; border-radius: 8px; position: relative; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);">
+          <div style="position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; animation: scanLine 1.6s ease-in-out infinite;"></div>
+        </div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 6px; background: rgba(15,23,42,0.85); padding: 3px 8px; border-radius: 4px;">
+          Aim at physical wall QR badge
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Checkpoint Chips for Active Floor -->
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 11px; font-weight: 700; color: #94a3b8;">Level <span id="chipsFloorNum">3</span> Checkpoints (Tap to Locate):</span>
+        <span style="font-size: 10px; color: #38bdf8; font-weight: 600;">25 Checkpoints Across Facility</span>
+      </div>
+      <div id="floorQrChipsContainer" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin;">
+        <!-- Populated via renderFloorQrChips() -->
+      </div>
+    </div>
+
+    <!-- Find Live Location of Admin / Incident Commander -->
+    <div style="display: flex; gap: 8px; align-items: center; background: rgba(30, 41, 59, 0.7); padding: 9px 12px; border-radius: 8px; border: 1px solid #334155;">
+      <div style="flex: 1;">
+        <div style="font-size: 11px; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
+          <span>📡</span> Incident Commander Live Post
+        </div>
+        <div id="adminLocationSummary" style="font-size: 10px; color: #cbd5e1; margin-top: 2px;">
+          Command Post: Campus Security Command & Incident Post G-103
+        </div>
+      </div>
+      <button id="btnFindAdminLocation" style="background: #0284c7; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4); transition: background 0.15s;">
+        <span>📍</span> Locate Admin
+      </button>
+    </div>
+  </section>
+
   <!-- Turn-by-Turn Dynamic Evacuation Directives -->
   <footer class="mobile-guidance-card">
     <div class="metric-badge">
@@ -278,31 +364,58 @@
 
   <!-- OUTDOOR GPS HANDOFF MODAL -->
   <div id="modalGps" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width: 440px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 style="font-size: 14px; color: #0f172a; font-weight: 800;">📍 Outdoor GPS Assembly Guidance</h3>
-        <button id="btnCloseGpsModal" style="background:none; border:none; font-size:16px; cursor:pointer;">✕</button>
+        <h3 style="font-size: 15px; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+          <span>📍</span> Outdoor GPS Assembly Guidance
+        </h3>
+        <button id="btnCloseGpsModal" style="background:none; border:none; font-size:18px; cursor:pointer; color:#64748b;">✕</button>
       </div>
-      
-      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 12px; text-align: center;">
-        <div style="font-size: 28px;">🧭</div>
-        <h4 style="font-size: 14px; font-weight: 800; color: #166534; margin-top: 4px;" id="gpsAssemblyTitle">
-          Assembly Point 1 (South Lawn)
-        </h4>
-        <div style="font-size: 12px; color: #15803d; font-weight: 700; margin-top: 2px;">
-          Distance: <span id="gpsDistance">38</span> meters • Bearing: <span id="gpsBearing">180° S</span>
+
+      <!-- Live Interactive Compass / Radar Card -->
+      <div style="background: #0f172a; border-radius: 10px; padding: 16px; margin-bottom: 12px; text-align: center; color: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.3); border: 1px solid #1e293b;">
+        <div style="width: 80px; height: 80px; margin: 0 auto 10px auto; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #1e293b 0%, #0f172a 70%); border-radius: 50%; border: 2px solid #16a34a; box-shadow: 0 0 15px rgba(22, 163, 74, 0.3);">
+          <div style="position: absolute; width: 100%; height: 100%; border: 1px dashed rgba(74, 222, 128, 0.4); border-radius: 50%;"></div>
+          <!-- Animated rotating needle pointing to bearing -->
+          <div id="gpsCompassNeedle" style="font-size: 38px; transform: rotate(180deg); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
+            🧭
+          </div>
         </div>
-        <p style="font-size: 11px; color: #4b5563; margin-top: 6px;" id="gpsGuidanceDesc">
+
+        <h4 style="font-size: 14px; font-weight: 800; color: #4ade80; margin: 0 0 4px 0;" id="gpsAssemblyTitle">
+          Primary Safe Assembly Point 1 (South Lawn)
+        </h4>
+
+        <!-- Distance & Bearing Badge -->
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(22, 163, 74, 0.2); border: 1px solid #16a34a; padding: 4px 12px; border-radius: 20px; margin-top: 4px;">
+          <span style="font-size: 14px; font-weight: 900; color: #86efac;" id="gpsDistance">38m</span>
+          <span style="color: #64748b;">•</span>
+          <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;" id="gpsBearing">180° S</span>
+        </div>
+
+        <!-- Live Step Guidance -->
+        <p style="font-size: 11.5px; color: #cbd5e1; margin: 10px 0 0 0; line-height: 1.4;" id="gpsGuidanceDesc">
           Follow paved walkway through South Exit directly onto grass clearing. Report immediately to Floor Wardens.
         </p>
       </div>
 
-      <div style="font-size: 11px; color: #64748b; margin-bottom: 12px;">
-        HTML5 W3C Geolocation Active: (<span id="gpsLat">12.9712</span>, <span id="gpsLng">77.5944</span>)
+      <!-- Mode Selector (Simulate Walk vs Real GPS) -->
+      <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <button id="btnGpsModeSim" style="flex: 1; background: #16a34a; color: #fff; border: 1px solid #15803d; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+          🚶 Simulated Walk (Campus Test)
+        </button>
+        <button id="btnGpsModeReal" style="flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+          📡 Real Mobile GPS
+        </button>
       </div>
 
-      <button id="btnAcknowledgeGps" style="width: 100%; background: #16a34a; color: #fff; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 800; border: none; cursor: pointer;">
-        I Am At Safe Assembly Point
+      <div style="font-size: 10.5px; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between;">
+        <span>Telemetry: (<span id="gpsLat">12.9712</span>, <span id="gpsLng">77.5944</span>)</span>
+        <span id="gpsModeIndicator" style="color: #16a34a; font-weight: bold;">Simulated Path</span>
+      </div>
+
+      <button id="btnAcknowledgeGps" style="width: 100%; background: #16a34a; color: #fff; padding: 11px; border-radius: 6px; font-size: 13px; font-weight: 800; border: none; cursor: pointer; transition: background 0.15s;">
+        ✓ I Have Reached Safe Assembly Point
       </button>
     </div>
   </div>
@@ -370,24 +483,80 @@
       }
 
       // 4. Initialize QR Scanner & GPS Handoff
+      let allQrCodes = [];
       const qrScanner = new QRPositioningScanner({
         onPositionResolved: async (pos) => {
-          await registerAndResolveQr(pos.code_id || pos.qr.code_id);
+          await registerAndResolveQr(pos.code_id || (pos.qr && pos.qr.code_id));
         }
       });
+
+      const compassNeedle = document.getElementById("gpsCompassNeedle");
+      const gpsDistance = document.getElementById("gpsDistance");
+      const gpsBearing = document.getElementById("gpsBearing");
+      const gpsGuidanceDesc = document.getElementById("gpsGuidanceDesc");
+      const gpsModeIndicator = document.getElementById("gpsModeIndicator");
 
       const gpsHandoff = new GPSAssemblyHandoff({
         onPositionUpdate: (data) => {
           document.getElementById("gpsLat").textContent = data.userLat.toFixed(4);
           document.getElementById("gpsLng").textContent = data.userLng.toFixed(4);
+          if (gpsModeIndicator) {
+            gpsModeIndicator.textContent = data.simulated ? "Simulated Path" : "Live Device GPS";
+            gpsModeIndicator.style.color = data.simulated ? "#16a34a" : "#38bdf8";
+          }
+
           if (data.nearestAssembly) {
             document.getElementById("gpsAssemblyTitle").textContent = data.nearestAssembly.name;
-            document.getElementById("gpsDistance").textContent = data.nearestAssembly.distanceMeters;
-            document.getElementById("gpsBearing").textContent = `${data.nearestAssembly.bearing}° ${gpsHandoff.getCompassDirection(data.nearestAssembly.bearing)}`;
-            document.getElementById("gpsGuidanceDesc").textContent = data.nearestAssembly.desc;
+            if (gpsDistance) gpsDistance.textContent = `${data.nearestAssembly.distanceMeters}m`;
+            if (gpsBearing) gpsBearing.textContent = `${data.nearestAssembly.bearing}° ${gpsHandoff.getCompassDirection(data.nearestAssembly.bearing)}`;
+
+            // Rotate visual compass needle
+            if (compassNeedle) {
+              compassNeedle.style.transform = `rotate(${data.nearestAssembly.bearing}deg)`;
+            }
+
+            if (data.stepMessage && gpsGuidanceDesc) {
+              gpsGuidanceDesc.textContent = data.stepMessage;
+            } else if (gpsGuidanceDesc) {
+              gpsGuidanceDesc.textContent = data.nearestAssembly.desc;
+            }
+
+            if (data.arrived) {
+              if (gpsDistance) {
+                gpsDistance.textContent = "ARRIVED (0m)";
+                gpsDistance.style.color = "#4ade80";
+              }
+              document.getElementById("gpsAssemblyTitle").textContent = "✓ Reached Safe Assembly Area!";
+            }
           }
         }
       });
+
+      // Hook GPS modal test mode buttons
+      const btnGpsModeSim = document.getElementById("btnGpsModeSim");
+      const btnGpsModeReal = document.getElementById("btnGpsModeReal");
+      if (btnGpsModeSim) {
+        btnGpsModeSim.addEventListener("click", () => {
+          btnGpsModeSim.style.background = "#16a34a";
+          btnGpsModeSim.style.color = "#fff";
+          if (btnGpsModeReal) {
+            btnGpsModeReal.style.background = "#f1f5f9";
+            btnGpsModeReal.style.color = "#334155";
+          }
+          gpsHandoff.startTracking(true);
+        });
+      }
+      if (btnGpsModeReal) {
+        btnGpsModeReal.addEventListener("click", () => {
+          btnGpsModeReal.style.background = "#2563eb";
+          btnGpsModeReal.style.color = "#fff";
+          if (btnGpsModeSim) {
+            btnGpsModeSim.style.background = "#f1f5f9";
+            btnGpsModeSim.style.color = "#334155";
+          }
+          gpsHandoff.startTracking(false);
+        });
+      }
 
       // UI References
       const floorButtons = document.querySelectorAll(".floor-btn");
@@ -405,11 +574,17 @@
       const pubHazardAlertText = document.getElementById("pubHazardAlertText");
       const pubSafeConfirmationCard = document.getElementById("pubSafeConfirmationCard");
       const btnMarkEvacuated = document.getElementById("btnMarkEvacuated");
+      const chipsFloorNum = document.getElementById("chipsFloorNum");
+      const floorQrChipsContainer = document.getElementById("floorQrChipsContainer");
 
       function updateFloorUI(fl) {
         currentFloor = parseInt(fl, 10);
         renderer.setFloor(currentFloor);
         floorButtons.forEach(btn => btn.classList.toggle("active", parseInt(btn.dataset.floor, 10) === currentFloor));
+        if (chipsFloorNum) {
+          chipsFloorNum.textContent = currentFloor === 0 ? "G" : currentFloor;
+        }
+        renderFloorQrChips(currentFloor);
       }
 
       floorButtons.forEach(btn => {
@@ -449,22 +624,126 @@
         } catch (e) {}
       }
 
-      // Populate Checkpoints in Scanner Modal
+      // Render Checkpoint Chips for Active Floor
+      function renderFloorQrChips(floorLevel) {
+        if (!floorQrChipsContainer) return;
+        floorQrChipsContainer.innerHTML = "";
+        const floorItems = allQrCodes.filter(q => parseInt(q.floor_id, 10) === parseInt(floorLevel, 10));
+
+        if (floorItems.length === 0) {
+          floorQrChipsContainer.innerHTML = `<span style="font-size:11px; color:#64748b;">Loading checkpoints...</span>`;
+          return;
+        }
+
+        floorItems.forEach(q => {
+          const chip = document.createElement("button");
+          chip.className = `qr-chip ${q.node_id === startNodeId ? 'active' : ''}`;
+          chip.innerHTML = `<span>📷</span> ${q.location_label || q.code_id}`;
+          chip.title = `${q.description} (${q.code_id})`;
+          chip.addEventListener("click", async () => {
+            await registerAndResolveQr(q.code_id);
+          });
+          floorQrChipsContainer.appendChild(chip);
+        });
+      }
+
+      // Populate Checkpoints in Scanner Modal & Below-Map Chips
       async function populateCheckpointsDropdown() {
         try {
           const resp = await fetch("/api/qr");
           const json = await resp.json();
           if (json.status === "success" && json.qr_codes) {
+            allQrCodes = json.qr_codes;
+            renderer.setQrCodes(allQrCodes);
+
             const sel = document.getElementById("modalQrSelect");
-            sel.innerHTML = "";
-            json.qr_codes.forEach(q => {
-              const opt = document.createElement("option");
-              opt.value = q.code_id;
-              opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
-              sel.appendChild(opt);
-            });
+            if (sel) {
+              sel.innerHTML = "";
+              allQrCodes.forEach(q => {
+                const opt = document.createElement("option");
+                opt.value = q.code_id;
+                opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
+                sel.appendChild(opt);
+              });
+            }
+
+            renderFloorQrChips(currentFloor);
           }
         } catch (e) {}
+      }
+
+      // Hook Click on Map QR Badges
+      renderer.onQrClick = async (qr) => {
+        await registerAndResolveQr(qr.code_id);
+      };
+
+      // Inline Camera Scanner Controls
+      let isInlineCameraActive = false;
+      const inlineBox = document.getElementById("inlineCameraBox");
+      const btnCameraText = document.getElementById("btnCameraText");
+      const btnCameraIcon = document.getElementById("btnCameraIcon");
+      const btnToggleCameraScanner = document.getElementById("btnToggleCameraScanner");
+
+      if (btnToggleCameraScanner) {
+        btnToggleCameraScanner.addEventListener("click", async () => {
+          if (!isInlineCameraActive) {
+            inlineBox.style.display = "block";
+            btnCameraText.textContent = "Close Camera";
+            btnCameraIcon.textContent = "✕";
+            btnToggleCameraScanner.style.background = "#dc2626";
+            isInlineCameraActive = true;
+
+            const ok = await qrScanner.startCamera("inlineCameraVideo", async (scannedCode) => {
+              isInlineCameraActive = false;
+              inlineBox.style.display = "none";
+              btnCameraText.textContent = "Open Camera";
+              btnCameraIcon.textContent = "📷";
+              btnToggleCameraScanner.style.background = "#2563eb";
+              qrScanner.stopCamera();
+              await registerAndResolveQr(scannedCode);
+            });
+
+            if (!ok) {
+              alert("Camera access was not granted or is unavailable on this device.\nYou can click any of the 5 quick checkpoint badges below to simulate instant scanning!");
+              inlineBox.style.display = "none";
+              btnCameraText.textContent = "Open Camera";
+              btnCameraIcon.textContent = "📷";
+              btnToggleCameraScanner.style.background = "#2563eb";
+              isInlineCameraActive = false;
+            }
+          } else {
+            isInlineCameraActive = false;
+            inlineBox.style.display = "none";
+            btnCameraText.textContent = "Open Camera";
+            btnCameraIcon.textContent = "📷";
+            btnToggleCameraScanner.style.background = "#2563eb";
+            qrScanner.stopCamera();
+          }
+        });
+      }
+
+      // Locate Incident Commander Live Post
+      const btnFindAdminLocation = document.getElementById("btnFindAdminLocation");
+      if (btnFindAdminLocation) {
+        btnFindAdminLocation.addEventListener("click", async () => {
+          try {
+            const resp = await fetch("/api/commander/location");
+            const json = await resp.json();
+            if (json.status === "success" && json.commander) {
+              const cmd = json.commander;
+              const adminFloor = parseInt(cmd.floor_id, 10);
+              document.getElementById("adminLocationSummary").textContent = `${cmd.location_label} (${cmd.status})`;
+              updateFloorUI(adminFloor);
+              await registerAndResolveQr(cmd.node_id);
+              alert(`📡 INCIDENT COMMANDER IDENTIFIED!\n\nLocation: ${cmd.location_label}\nFloor: Level ${adminFloor}\nStatus: ${cmd.status}\n\nYour map and evacuation coordinates have synchronized with Command.`);
+              return;
+            }
+          } catch (e) {}
+
+          // Fallback to Ground Floor Security Command
+          updateFloorUI(0);
+          await registerAndResolveQr("QR_G_SECURITY");
+        });
       }
 
       // Centralized Scan & Localization Handler
@@ -480,21 +759,40 @@
         }
 
         const fallbackQR = {
+          // Ground Floor
           "QR_G_ATRIUM": { floor: 0, node_id: "NODE_LOBBY_SOUTH", label: "Central Atrium Portal" },
           "QR_G_ADMIN": { floor: 0, node_id: "NODE_ROOM_G_01", label: "Admin & Accounts G-101" },
+          "QR_G_CLINIC": { floor: 0, node_id: "NODE_ROOM_G_02", label: "First Aid Clinic G-102" },
           "QR_G_CAFE": { floor: 0, node_id: "NODE_ROOM_G_06", label: "Cafeteria G-106" },
+          "QR_G_SECURITY": { floor: 0, node_id: "NODE_ROOM_G_03", label: "Security Command G-103" },
+
+          // Floor 1
           "QR_1_FACULTY": { floor: 1, node_id: "NODE_ROOM_1_01", label: "Faculty Dept 101" },
           "QR_1_CSLAB": { floor: 1, node_id: "NODE_ROOM_1_06", label: "CS Software Lab 106" },
-          "QR_1_BRIDGE": { floor: 1, node_id: "N1_C_CENTER", label: "Skybridge Center" },
+          "QR_1_NETLAB": { floor: 1, node_id: "NODE_ROOM_1_07", label: "Networks Lab 107" },
+          "QR_1_BRIDGE": { floor: 1, node_id: "N1_C_CENTER", label: "Skybridge Center L1" },
+          "QR_1_STAIR_A": { floor: 1, node_id: "STAIR_A_1", label: "West Staircase A L1" },
+
+          // Floor 2
           "QR_2_LECTURE": { floor: 2, node_id: "NODE_ROOM_2_01", label: "Lecture Theater 201" },
           "QR_2_SEMINAR": { floor: 2, node_id: "NODE_ROOM_2_06", label: "Seminar Hall 206" },
+          "QR_2_BRIDGE": { floor: 2, node_id: "N2_C_CENTER", label: "Skybridge Walkway L2" },
           "QR_2_STAIR_A": { floor: 2, node_id: "STAIR_A_2", label: "West Staircase A L2" },
           "QR_2_STAIR_B": { floor: 2, node_id: "STAIR_B_2", label: "East Staircase B L2" },
-          "QR_3_LIBRARY": { floor: 3, node_id: "NODE_ROOM_3_01", label: "Digital Central Library 301" },
+
+          // Floor 3
+          "QR_3_LIBRARY": { floor: 3, node_id: "NODE_ROOM_3_01", label: "Library Stacks 301" },
           "QR_3_AILAB": { floor: 3, node_id: "NODE_ROOM_3_05", label: "AI & Robotics Lab 305" },
-          "QR_3_HPC": { floor: 3, node_id: "NODE_ROOM_3_06", label: "Supercomputing Center 306" },
+          "QR_3_HPC": { floor: 3, node_id: "NODE_ROOM_3_06", label: "HPC Facility 306" },
+          "QR_3_STAIR_A": { floor: 3, node_id: "STAIR_A_3", label: "West Staircase A L3" },
+          "QR_3_STAIR_B": { floor: 3, node_id: "STAIR_B_3", label: "East Staircase B L3" },
+
+          // Floor 4
           "QR_4_BOARDROOM": { floor: 4, node_id: "NODE_ROOM_4_01", label: "Executive Boardroom 401" },
-          "QR_4_AUDITORIUM": { floor: 4, node_id: "NODE_ROOM_4_06", label: "Grand Auditorium 406" }
+          "QR_4_AUDITORIUM": { floor: 4, node_id: "NODE_ROOM_4_06", label: "Grand Auditorium 406" },
+          "QR_4_ROOF_EXIT": { floor: 4, node_id: "N4_C_CENTER", label: "Skydeck Access L4" },
+          "QR_4_STAIR_A": { floor: 4, node_id: "STAIR_A_4", label: "West Staircase A L4" },
+          "QR_4_STAIR_B": { floor: 4, node_id: "STAIR_B_4", label: "East Staircase B L4" }
         };
 
         try {
@@ -546,6 +844,14 @@
           currentFloor = loc.floor;
           pubCurrentLocationLbl.textContent = `${loc.label} (Level ${loc.floor})`;
           pubFloorBadge.textContent = `LEVEL ${loc.floor}`;
+          updateFloorUI(currentFloor);
+          fallbackClientRoute();
+        } else if (cleanCode && cleanCode.startsWith("NODE_")) {
+          startNodeId = cleanCode;
+          if (graphData && graphData.nodes && graphData.nodes[cleanCode]) {
+            currentFloor = graphData.nodes[cleanCode].floor;
+          }
+          pubCurrentLocationLbl.textContent = `Synchronized Post (${cleanCode})`;
           updateFloorUI(currentFloor);
           fallbackClientRoute();
         }
@@ -700,7 +1006,7 @@
       document.getElementById("btnRecalculatePublic").addEventListener("click", () => calculatePublicRoute());
 
       // Initial execution & URL QR check
-      populateCheckpointsDropdown();
+      await populateCheckpointsDropdown();
       syncPublicOccupancy();
       setInterval(syncPublicOccupancy, 3500);
 

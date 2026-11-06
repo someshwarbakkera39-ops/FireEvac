@@ -493,6 +493,40 @@ def register_qr_code():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
+# In-memory store for Incident Commander / Admin live location
+_COMMANDER_LOCATION = {
+    "node_id": "NODE_ROOM_G_03",
+    "floor_id": 0,
+    "location_label": "Campus Security Command & Incident Post G-103",
+    "description": "Ground Floor Primary Security Control & Incident Commander Post",
+    "status": "Active On-Duty",
+    "last_updated": "Live Telemetry"
+}
+
+@app.route("/api/commander/location", methods=["GET", "POST"])
+def commander_location():
+    """
+    GET: Returns the current live stationary/mobile location of the Incident Commander / Admin.
+    POST: Updates the commander's post or position.
+    """
+    global _COMMANDER_LOCATION
+    if request.method == "POST":
+        data = request.get_json() or {}
+        if "node_id" in data:
+            _COMMANDER_LOCATION["node_id"] = data["node_id"]
+        if "floor_id" in data:
+            _COMMANDER_LOCATION["floor_id"] = int(data["floor_id"])
+        if "location_label" in data:
+            _COMMANDER_LOCATION["location_label"] = data["location_label"]
+        if "description" in data:
+            _COMMANDER_LOCATION["description"] = data["description"]
+        if "status" in data:
+            _COMMANDER_LOCATION["status"] = data["status"]
+        _COMMANDER_LOCATION["last_updated"] = "Updated just now"
+        return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
+
+    return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
+
 # ============================================================================
 # Occupancy, SOS & Drill Simulation APIs
 # ============================================================================

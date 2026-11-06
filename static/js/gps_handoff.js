@@ -24,6 +24,19 @@ class GPSAssemblyHandoff {
 
     this.onPositionUpdate = options.onPositionUpdate || null;
     this.watchId = null;
+    this.isSimulating = false;
+    this.simInterval = null;
+    this.simStep = 0;
+    this.forceSimulation = false;
+
+    // Waypoints for smooth walking simulation from South Exit to Assembly Point 1
+    this.simulatedPath = [
+      { lat: 12.97120, lng: 77.59440, msg: "Stepped outside Main South Exit onto perimeter walkway." },
+      { lat: 12.97130, lng: 77.59445, msg: "Passing exterior covered colonnade heading South." },
+      { lat: 12.97142, lng: 77.59450, msg: "Approaching South Lawn safety perimeter rope." },
+      { lat: 12.97152, lng: 77.59456, msg: "Entering designated Muster Clearing 1." },
+      { lat: 12.97160, lng: 77.59460, msg: "Arrived at Primary Safe Assembly Point 1 (South Lawn). Safety Check-in Confirmed!" }
+    ];
   }
 
   // Haversine formula for physical distance (meters)
@@ -70,20 +83,47 @@ class GPSAssemblyHandoff {
     return nearest;
   }
 
-  startTracking() {
-    if (!navigator.geolocation) {
-      // Simulated GPS position outside South Exit for desktop prototype testing
-      const simLat = 12.9712;
-      const simLng = 77.5944;
-      const nearest = this.findNearestAssembly(simLat, simLng);
+  startSimulation() {
+    this.stopTracking();
+    this.isSimulating = true;
+    this.simStep = 0;
+
+    const emitSimStep = () => {
+      const point = this.simulatedPath[this.simStep];
+      const nearest = this.findNearestAssembly(point.lat, point.lng);
+      const isArrived = this.simStep >= this.simulatedPath.length - 1;
+
       if (this.onPositionUpdate) {
         this.onPositionUpdate({
-          userLat: simLat,
-          userLng: simLng,
+          userLat: point.lat,
+          userLng: point.lng,
+          accuracy: 3,
           nearestAssembly: nearest,
-          simulated: true
+          simulated: true,
+          stepMessage: point.msg,
+          arrived: isArrived
         });
       }
+
+      if (this.simStep < this.simulatedPath.length - 1) {
+        this.simStep++;
+      }
+    };
+
+    emitSimStep();
+    this.simInterval = setInterval(emitSimStep, 1500);
+  }
+
+  startTracking(forceSim = false) {
+    this.stopTracking();
+
+    if (forceSim || this.forceSimulation) {
+      this.startSimulation();
+      return true;
+    }
+
+    if (!navigator.geolocation) {
+      this.startSimulation();
       return false;
     }
 
@@ -92,36 +132,42 @@ class GPSAssemblyHandoff {
         const uLat = pos.coords.latitude;
         const uLng = pos.coords.longitude;
         const nearest = this.findNearestAssembly(uLat, uLng);
+
+        // If coordinates are more than 10km from campus (testing away from campus site),
+        // use interactive campus simulation so the outdoor handoff prototype works realistically
+        if (nearest && nearest.distanceMeters > 5000) {
+          console.info("Device GPS is away from campus site; activating interactive campus walk simulation.");
+          this.startSimulation();
+          return;
+        }
+
         if (this.onPositionUpdate) {
           this.onPositionUpdate({
             userLat: uLat,
             userLng: uLng,
             accuracy: Math.round(pos.coords.accuracy),
             nearestAssembly: nearest,
-            simulated: false
+            simulated: false,
+            arrived: nearest ? nearest.distanceMeters <= 8 : false
           });
         }
       },
       (err) => {
-        console.warn("Geolocation watch error, using simulation fallback:", err);
-        const simLat = 12.9712;
-        const simLng = 77.5944;
-        const nearest = this.findNearestAssembly(simLat, simLng);
-        if (this.onPositionUpdate) {
-          this.onPositionUpdate({
-            userLat: simLat,
-            userLng: simLng,
-            nearestAssembly: nearest,
-            simulated: true
-          });
-        }
+        console.warn("Geolocation watch error or permission unavailable, switching to simulated walk:", err);
+        this.startSimulation();
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
     return true;
   }
 
   stopTracking() {
+    if (this.simInterval) {
+      clearInterval(this.simInterval);
+      this.simInterval = null;
+    }
+    this.isSimulating = false;
+
     if (this.watchId !== null && navigator.geolocation) {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;

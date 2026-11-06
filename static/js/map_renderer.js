@@ -13,6 +13,8 @@ class FloorMapRenderer {
     this.currentFloor = options.initialFloor !== undefined ? options.initialFloor : 0;
     this.onNodeClick = options.onNodeClick || null;
     this.onRoomClick = options.onRoomClick || null;
+    this.onQrClick = options.onQrClick || null;
+    this.qrCodes = options.qrCodes || [];
 
     // View state
     this.zoom = 1;
@@ -32,7 +34,8 @@ class FloorMapRenderer {
       grid: true,
       graph: false,
       path: true,
-      hazards: true
+      hazards: true,
+      qr: true
     };
 
     // Active path / highlight layers (for Dijkstra & Hazards)
@@ -88,6 +91,9 @@ class FloorMapRenderer {
             <filter id="blueGlow" x="-30%" y="-30%" width="160%" height="160%">
               <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#2563eb" flood-opacity="1"/>
             </filter>
+            <filter id="cyanGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#06b6d4" flood-opacity="0.95"/>
+            </filter>
 
             <!-- Marker for directed path -->
             <marker id="pathArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -104,12 +110,25 @@ class FloorMapRenderer {
             <g id="stairwellsLayer"></g>
             <g id="exitsLayer"></g>
             <g id="graphLayer"></g>
+            <g id="qrMarkersLayer"></g>
             <g id="hazardLayer"></g>
             <g id="pathLayer"></g>
             <g id="userMarkerLayer"></g>
             <g id="simulationLayer"></g>
           </g>
         </svg>
+
+        <!-- North Compass Badge -->
+        <div style="position:absolute; top:12px; left:12px; pointer-events:none; z-index:25; display:flex; align-items:center; gap:5px; background:rgba(15, 23, 42, 0.88); border:1px solid #334155; padding:5px 9px; border-radius:6px; font-size:10px; color:#cbd5e1; font-weight:800; box-shadow:0 4px 12px rgba(0,0,0,0.4); backdrop-filter:blur(4px);">
+          <span style="color:#ef4444; font-size:12px;">▲</span> NORTH <span style="color:#64748b; font-weight:normal;">| 1:100</span>
+        </div>
+
+        <!-- Floating On-Canvas Smooth Navigation HUD Controls -->
+        <div class="map-hud-controls" style="position:absolute; bottom:16px; right:16px; display:flex; flex-direction:column; gap:6px; z-index:30;">
+          <button class="map-hud-btn" id="mapHudZoomIn" title="Zoom In (+)" style="width:34px; height:34px; border-radius:6px; background:rgba(15, 23, 42, 0.9); border:1px solid #334155; color:#38bdf8; font-size:16px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:all 0.15s ease;">＋</button>
+          <button class="map-hud-btn" id="mapHudZoomOut" title="Zoom Out (−)" style="width:34px; height:34px; border-radius:6px; background:rgba(15, 23, 42, 0.9); border:1px solid #334155; color:#38bdf8; font-size:16px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:all 0.15s ease;">−</button>
+          <button class="map-hud-btn" id="mapHudReset" title="Reset View Frame (100%)" style="width:34px; height:34px; border-radius:6px; background:rgba(15, 23, 42, 0.9); border:1px solid #334155; color:#a5b4fc; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5); transition:all 0.15s ease;">⟲</button>
+        </div>
 
         <!-- Dynamic Architectural Tooltip -->
         <div id="mapTooltip" style="position:absolute; display:none; pointer-events:none; z-index:100;
@@ -123,16 +142,25 @@ class FloorMapRenderer {
     this.viewportGroup = this.container.querySelector("#viewportGroup");
     this.tooltip = this.container.querySelector("#mapTooltip");
 
+    // Hook HUD control buttons
+    const btnIn = this.container.querySelector("#mapHudZoomIn");
+    const btnOut = this.container.querySelector("#mapHudZoomOut");
+    const btnReset = this.container.querySelector("#mapHudReset");
+    if (btnIn) btnIn.addEventListener("click", () => this.zoomIn());
+    if (btnOut) btnOut.addEventListener("click", () => this.zoomOut());
+    if (btnReset) btnReset.addEventListener("click", () => this.resetView());
+
     this.attachEvents();
     this.render();
   }
 
   attachEvents() {
-    // Mouse wheel zoom
+    // Mouse wheel zoom (silky smooth dampening to eliminate dizzying fast zooms)
     this.svg.addEventListener("wheel", (e) => {
       e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-      const newZoom = Math.min(Math.max(this.zoom * zoomFactor, 0.5), 4.5);
+      const delta = Math.sign(e.deltaY);
+      const zoomFactor = delta < 0 ? 1.035 : 0.965;
+      const newZoom = Math.min(Math.max(this.zoom * zoomFactor, 0.75), 2.8);
       
       const rect = this.svg.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -295,13 +323,18 @@ class FloorMapRenderer {
   }
 
   zoomIn() {
-    this.zoom = Math.min(this.zoom * 1.25, 4.5);
+    this.zoom = Math.min(this.zoom * 1.15, 2.8);
     this.updateTransform();
   }
 
   zoomOut() {
-    this.zoom = Math.max(this.zoom / 1.25, 0.5);
+    this.zoom = Math.max(this.zoom / 1.15, 0.75);
     this.updateTransform();
+  }
+
+  setQrCodes(qrList) {
+    this.qrCodes = qrList || [];
+    this.render();
   }
 
   showTooltip(e, html) {
@@ -328,6 +361,8 @@ class FloorMapRenderer {
     this.container.querySelector("#stairwellsLayer").innerHTML = "";
     this.container.querySelector("#exitsLayer").innerHTML = "";
     this.container.querySelector("#graphLayer").innerHTML = "";
+    const qrLayer = this.container.querySelector("#qrMarkersLayer");
+    if (qrLayer) qrLayer.innerHTML = "";
     this.container.querySelector("#hazardLayer").innerHTML = "";
     this.container.querySelector("#pathLayer").innerHTML = "";
     this.container.querySelector("#userMarkerLayer").innerHTML = "";
@@ -557,6 +592,109 @@ class FloorMapRenderer {
       }
       gHtml += `</g>`;
       this.container.querySelector("#graphLayer").innerHTML = gHtml;
+    }
+
+    // 7B. Stationary QR Positioning Markers Layer (All 25 Checkpoints across Floors 0-4)
+    if (this.layers.qr !== false && this.qrCodes && this.qrCodes.length > 0) {
+      const qrLayer = this.container.querySelector("#qrMarkersLayer");
+      if (qrLayer) {
+        let qrHtml = `<g id="qrMarkersGroup" filter="url(#cyanGlow)">`;
+        const fallbackCoords = {
+          "NODE_LOBBY_SOUTH": { x: 600, y: 520 },
+          "NODE_ROOM_G_01": { x: 180, y: 220 },
+          "NODE_ROOM_G_02": { x: 180, y: 310 },
+          "NODE_ROOM_G_03": { x: 180, y: 440 },
+          "NODE_ROOM_G_06": { x: 1020, y: 440 },
+          "NODE_ROOM_1_01": { x: 180, y: 220 },
+          "NODE_ROOM_1_06": { x: 1020, y: 220 },
+          "NODE_ROOM_1_07": { x: 1020, y: 310 },
+          "N1_C_CENTER": { x: 600, y: 370 },
+          "STAIR_A_1": { x: 380, y: 220 },
+          "NODE_ROOM_2_01": { x: 180, y: 220 },
+          "NODE_ROOM_2_06": { x: 1020, y: 220 },
+          "N2_C_CENTER": { x: 600, y: 370 },
+          "STAIR_A_2": { x: 380, y: 220 },
+          "STAIR_B_2": { x: 820, y: 220 },
+          "NODE_ROOM_3_01": { x: 180, y: 220 },
+          "NODE_ROOM_3_05": { x: 600, y: 320 },
+          "NODE_ROOM_3_06": { x: 1020, y: 220 },
+          "STAIR_A_3": { x: 380, y: 220 },
+          "STAIR_B_3": { x: 820, y: 220 },
+          "NODE_ROOM_4_01": { x: 180, y: 220 },
+          "NODE_ROOM_4_06": { x: 1020, y: 220 },
+          "N4_C_CENTER": { x: 600, y: 370 },
+          "STAIR_A_4": { x: 380, y: 220 },
+          "STAIR_B_4": { x: 820, y: 220 }
+        };
+
+        this.qrCodes.forEach(q => {
+          if (parseInt(q.floor_id, 10) === this.currentFloor) {
+            let qx = 600, qy = 370;
+            if (this.graphData && this.graphData.nodes && this.graphData.nodes[q.node_id]) {
+              qx = this.graphData.nodes[q.node_id].x;
+              qy = this.graphData.nodes[q.node_id].y;
+            } else if (fallbackCoords[q.node_id]) {
+              qx = fallbackCoords[q.node_id].x;
+              qy = fallbackCoords[q.node_id].y;
+            }
+
+            qrHtml += `
+              <g class="qr-marker-badge" data-code="${q.code_id}" data-node="${q.node_id}" style="cursor:pointer;">
+                <!-- Pulsing Outer Cyan Wave Ring -->
+                <circle cx="${qx}" cy="${qy}" r="15" fill="rgba(6, 182, 212, 0.18)" stroke="#06b6d4" stroke-width="1.5">
+                  <animate attributeName="r" values="11;18;11" dur="2s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.8;0.2;0.8" dur="2s" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- High-Tech Square QR Badge -->
+                <rect x="${qx - 11}" y="${qy - 11}" width="22" height="22" rx="4"
+                      fill="#090d16" stroke="#06b6d4" stroke-width="2"/>
+
+                <!-- Micro QR Matrix Finder Patterns -->
+                <rect x="${qx - 8}" y="${qy - 8}" width="6" height="6" fill="#38bdf8"/>
+                <rect x="${qx - 6}" y="${qy - 6}" width="2" height="2" fill="#090d16"/>
+                <rect x="${qx + 2}" y="${qy - 8}" width="6" height="6" fill="#38bdf8"/>
+                <rect x="${qx + 4}" y="${qy - 6}" width="2" height="2" fill="#090d16"/>
+                <rect x="${qx - 8}" y="${qy + 2}" width="6" height="6" fill="#38bdf8"/>
+                <rect x="${qx - 6}" y="${qy + 4}" width="2" height="2" fill="#090d16"/>
+                <rect x="${qx + 3}" y="${qy + 3}" width="4" height="4" fill="#38bdf8"/>
+
+                <!-- Label Chip Tag Below Marker -->
+                <rect x="${qx - 45}" y="${qy + 14}" width="90" height="15" rx="3"
+                      fill="rgba(15, 23, 42, 0.95)" stroke="#06b6d4" stroke-width="1"/>
+                <text x="${qx}" y="${qy + 25}" fill="#67e8f9" font-size="8.5" font-weight="800" text-anchor="middle" letter-spacing="0.4">
+                  QR: ${(q.location_label || q.code_id).substring(0, 14)}
+                </text>
+              </g>
+            `;
+          }
+        });
+        qrHtml += `</g>`;
+        qrLayer.innerHTML = qrHtml;
+
+        // Tooltip & Click Handlers on QR Markers
+        this.container.querySelectorAll(".qr-marker-badge").forEach(elem => {
+          const codeId = elem.getAttribute("data-code");
+          const q = this.qrCodes.find(item => item.code_id === codeId);
+          if (q) {
+            elem.addEventListener("mouseenter", (e) => {
+              this.showTooltip(e, `
+                <div style="font-weight:bold; color:#38bdf8; display:flex; align-items:center; gap:5px;">
+                  <span>📷 PHYSICAL QR CHECKPOINT</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:#f8fafc; margin-top:3px;">${q.location_label}</div>
+                <div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">Payload: <code style="color:#67e8f9; background:rgba(6,182,212,0.15); padding:1px 4px; border-radius:3px;">${q.code_id}</code> • Floor ${q.floor_id}</div>
+                <div style="font-size:10px; color:#cbd5e1; margin-top:3px;">${q.description || 'Stationary wall marker'}</div>
+                <div style="font-size:9.5px; color:#4ade80; font-weight:bold; margin-top:5px;">⚡ Click marker to select & update route</div>
+              `);
+            });
+            elem.addEventListener("mouseleave", () => this.hideTooltip());
+            elem.addEventListener("click", () => {
+              if (this.onQrClick) this.onQrClick(q);
+            });
+          }
+        });
+      }
     }
 
     // 8. Hazard Markers Layer (Vivid Red #dc2626)

@@ -154,7 +154,7 @@
     <div>
       <h2 style="margin: 0; font-size: 17px; font-weight: 800;">📷 Physical QR Code Testing Kit — Block A Digital Twin</h2>
       <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
-        15 camera-scannable QR checkpoints encoding direct mobile navigation links (Floors 0 to 4).
+        25 camera-scannable QR checkpoints encoding direct mobile navigation links (5 per floor, Floors 0 to 4).
       </div>
     </div>
     <div style="display: flex; gap: 8px;">
@@ -688,6 +688,43 @@
 
       async function syncBadgesToHost(targetHost) {
         const cleanHost = targetHost.replace(/\/+$/, "");
+
+        // Dynamically fetch and append any missing QR checkpoints (ensures all 25 are rendered)
+        try {
+          const resp = await fetch("/api/qr");
+          const json = await resp.json();
+          if (json.status === "success" && json.qr_codes) {
+            const grid = document.querySelector(".sheet-grid");
+            json.qr_codes.forEach(q => {
+              if (!document.getElementById(`card_${q.code_id}`)) {
+                const card = document.createElement("div");
+                card.className = "qr-card";
+                card.id = `card_${q.code_id}`;
+                card.innerHTML = `
+                  <div class="card-header">
+                    <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
+                    <span class="floor-pill">LEVEL ${q.floor_id}</span>
+                  </div>
+                  <div class="card-title">${q.location_label}</div>
+                  <div class="card-sub">${q.description || 'Stationary wall marker'} (Level ${q.floor_id})</div>
+                  <div class="qr-svg-wrap">
+                    <img src="/api/qr/image/${q.code_id}?base_url=${encodeURIComponent(cleanHost)}" alt="${q.code_id}" style="width:140px; height:140px;" />
+                  </div>
+                  <div class="payload-box">${q.code_id}</div>
+                  <div class="meta-footer">
+                    <div>Scannable URL: <a href="${cleanHost}/public?qr=${q.code_id}" target="_blank">${cleanHost}/public?qr=${q.code_id}</a></div>
+                  </div>
+                  <div style="display:flex; gap:6px; margin-top:8px; width:100%;">
+                    <a href="${cleanHost}/public?qr=${q.code_id}" target="_blank" class="test-btn" style="flex:1;">Test Route</a>
+                    <a href="/api/qr/image/${q.code_id}" download="${q.code_id}.png" class="test-btn download-btn" style="flex:1;">Download PNG</a>
+                  </div>
+                `;
+                grid.appendChild(card);
+              }
+            });
+          }
+        } catch (e) {}
+
         const cards = document.querySelectorAll(".qr-card");
 
         for (const card of cards) {

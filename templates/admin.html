@@ -308,7 +308,7 @@
         </div>
 
         <a href="/static/qr_testkit.html" target="_blank" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px; background: #2563eb; color: #fff; text-decoration: none; font-weight: bold;">
-          🖨️ Open Full Printable Test Kit (15 Badges)
+          🖨️ Open Full Printable Test Kit (25 Checkpoints)
         </a>
       </div>
     </aside>
@@ -1096,9 +1096,16 @@
               opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
               adminQrSelect.appendChild(opt);
             });
+            // Feed QR codes to Map Renderer for real-time visualization of all 25 checkpoints
+            renderer.setQrCodes(json.qr_codes);
           }
         } catch (e) {}
       }
+
+      renderer.onQrClick = (qr) => {
+        adminQrSelect.value = qr.code_id;
+        updateAdminQrBadge(qr.code_id);
+      };
 
       function updateAdminQrBadge(codeId) {
         document.getElementById("qrCardCode").textContent = `PAYLOAD: ${codeId}`;
