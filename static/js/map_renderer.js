@@ -101,6 +101,7 @@ class FloorMapRenderer {
             <g id="hazardLayer"></g>
             <g id="pathLayer"></g>
             <g id="userMarkerLayer"></g>
+            <g id="simulationLayer"></g>
           </g>
         </svg>
 
@@ -640,7 +641,46 @@ class FloorMapRenderer {
       }
     }
 
+    // 11. Live Simulation Drill Occupants Layer
+    this.renderSimulationLayer();
+
     this.updateTransform();
+  }
+
+  setSimulationOccupants(occupants) {
+    this.simOccupants = occupants || [];
+    this.renderSimulationLayer();
+  }
+
+  renderSimulationLayer() {
+    const simGroup = this.container.querySelector("#simulationLayer");
+    if (!simGroup) return;
+
+    if (!this.simOccupants || this.simOccupants.length === 0) {
+      simGroup.innerHTML = "";
+      return;
+    }
+
+    let html = `<g id="simOccupantsGroup" filter="url(#blueGlow)">`;
+    this.simOccupants.forEach(occ => {
+      if (occ.floor === this.currentFloor && occ.status === "inside") {
+        const color = occ.isRerouting ? "#f59e0b" : (occ.color || "#38bdf8");
+        html += `
+          <g class="sim-occupant" transform="translate(${Math.round(occ.x)}, ${Math.round(occ.y)})">
+            <circle r="14" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4">
+              <animate attributeName="r" values="9;18;9" dur="1.2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.2s" repeatCount="indefinite"/>
+            </circle>
+            <circle r="7" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+            <rect x="-24" y="-22" width="48" height="13" rx="3" fill="rgba(15, 23, 42, 0.9)" stroke="${color}" stroke-width="1"/>
+            <text x="0" y="-12" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">${occ.id}</text>
+            ${occ.isRerouting ? `<text x="0" y="18" fill="#f59e0b" font-size="8" font-weight="bold" text-anchor="middle">REROUTE</text>` : ''}
+          </g>
+        `;
+      }
+    });
+    html += `</g>`;
+    simGroup.innerHTML = html;
   }
 }
 

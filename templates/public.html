@@ -146,6 +146,35 @@
     </button>
   </header>
 
+  <!-- Live Occupant Counting & Status Ticker Bar -->
+  <div id="pubLiveStatsBar" style="background: #1e293b; color: #cbd5e1; font-size: 11px; padding: 7px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+    <div>
+      <span style="color: #94a3b8;">Occupants:</span>
+      <strong id="pubStatInside" style="color: #fbbf24; margin-right: 8px;">-- Inside</strong>
+      <strong id="pubStatSafe" style="color: #4ade80;">-- Evacuated</strong>
+    </div>
+    <div>
+      <span style="color: #94a3b8;">QR Scans:</span>
+      <strong id="pubStatScanned" style="color: #38bdf8;">--</strong>
+    </div>
+  </div>
+
+  <!-- Live Dynamic Hazard Broadcast Alert -->
+  <div id="pubHazardAlertBanner" style="display: none; background: #fee2e2; border-bottom: 2px solid #ef4444; color: #991b1b; padding: 8px 16px; font-size: 11px; font-weight: bold; align-items: center; justify-content: space-between;">
+    <span id="pubHazardAlertText">⚠️ Hazard Detected: Route dynamically rerouted around danger zone.</span>
+    <span style="background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px;">ACTIVE DANGER</span>
+  </div>
+
+  <!-- Safe Evacuation Confirmation Card -->
+  <div id="pubSafeConfirmationCard" style="display: none; background: #ecfdf5; border-bottom: 2px solid #10b981; padding: 10px 16px; text-align: center;">
+    <div style="font-size: 16px; font-weight: 800; color: #065f46; margin-bottom: 2px;">
+      ✅ SAFELY EVACUATED
+    </div>
+    <div style="font-size: 11px; color: #047857;">
+      Your safety confirmation has been registered at Campus Incident Command. Please remain at designated safe assembly area.
+    </div>
+  </div>
+
   <!-- Quick Action Pill Bar -->
   <nav class="action-pill-bar" aria-label="Quick positioning actions">
     <button class="action-pill active" id="btnActionQr">
@@ -307,15 +336,24 @@
   <script src="/static/js/gps_handoff.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
+      // 1. Maintain persistent unique occupant ID
+      let occupantId = localStorage.getItem("blocka_occupant_id");
+      if (!occupantId) {
+        occupantId = "USER_" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        localStorage.setItem("blocka_occupant_id", occupantId);
+      }
+
       let currentFloor = 3;
       let startNodeId = "NODE_ROOM_3_05"; // AI Lab 305 default
+      let currentExitNode = "NODE_EXIT_G_MAIN";
+      let isEvacuated = false;
 
-      // 1. Initialize Map Renderer
+      // 2. Initialize Map Renderer
       const renderer = new FloorMapRenderer("floorMapContainer", {
         initialFloor: 3
       });
 
-      // 2. Fetch Graph Data
+      // 3. Fetch Graph Data
       let graphData = null;
       let clientDijkstra = null;
 
@@ -331,15 +369,10 @@
         console.warn("Using offline fallback", e);
       }
 
-      // 3. Initialize QR Scanner & GPS Handoff
+      // 4. Initialize QR Scanner & GPS Handoff
       const qrScanner = new QRPositioningScanner({
-        onPositionResolved: (pos) => {
-          startNodeId = pos.node_id;
-          currentFloor = pos.floor;
-          document.getElementById("pubCurrentLocationLbl").textContent = `${pos.qr.location_label} (Level ${pos.floor})`;
-          document.getElementById("pubFloorBadge").textContent = `LEVEL ${pos.floor}`;
-          updateFloorUI(currentFloor);
-          calculatePublicRoute();
+        onPositionResolved: async (pos) => {
+          await registerAndResolveQr(pos.code_id || pos.qr.code_id);
         }
       });
 
@@ -363,6 +396,15 @@
       const pubTimeLbl = document.getElementById("pubTimeLbl");
       const pubStepTitle = document.getElementById("pubStepTitle");
       const pubStepDesc = document.getElementById("pubStepDesc");
+      const pubCurrentLocationLbl = document.getElementById("pubCurrentLocationLbl");
+      const pubFloorBadge = document.getElementById("pubFloorBadge");
+      const pubStatInside = document.getElementById("pubStatInside");
+      const pubStatSafe = document.getElementById("pubStatSafe");
+      const pubStatScanned = document.getElementById("pubStatScanned");
+      const pubHazardAlertBanner = document.getElementById("pubHazardAlertBanner");
+      const pubHazardAlertText = document.getElementById("pubHazardAlertText");
+      const pubSafeConfirmationCard = document.getElementById("pubSafeConfirmationCard");
+      const btnMarkEvacuated = document.getElementById("btnMarkEvacuated");
 
       function updateFloorUI(fl) {
         currentFloor = parseInt(fl, 10);
@@ -373,6 +415,103 @@
       floorButtons.forEach(btn => {
         btn.addEventListener("click", () => updateFloorUI(btn.dataset.floor));
       });
+
+      // Synchronize Live Occupancy Stats & Hazards
+      let lastHazardCount = -1;
+      async function syncPublicOccupancy() {
+        try {
+          const occResp = await fetch("/api/occupancy");
+          const occJson = await occResp.json();
+          if (occJson.status === "success" && occJson.metrics) {
+            const m = occJson.metrics;
+            pubStatInside.textContent = `${m.inside_building} Inside`;
+            pubStatSafe.textContent = `${m.safely_evacuated} Evacuated`;
+            pubStatScanned.textContent = `${m.total_scanned}`;
+          }
+
+          // Check active hazards
+          const hazResp = await fetch("/api/hazards");
+          const hazJson = await hazResp.json();
+          if (hazJson.status === "success") {
+            const hazards = hazJson.hazards || [];
+            if (lastHazardCount !== -1 && hazards.length !== lastHazardCount) {
+              if (hazards.length > 0) {
+                pubHazardAlertBanner.style.display = "flex";
+                pubHazardAlertText.textContent = `⚠️ Active Incident: ${hazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted.`;
+              } else {
+                pubHazardAlertBanner.style.display = "none";
+              }
+              calculatePublicRoute();
+            }
+            lastHazardCount = hazards.length;
+          }
+        } catch (e) {}
+      }
+
+      // Populate Checkpoints in Scanner Modal
+      async function populateCheckpointsDropdown() {
+        try {
+          const resp = await fetch("/api/qr");
+          const json = await resp.json();
+          if (json.status === "success" && json.qr_codes) {
+            const sel = document.getElementById("modalQrSelect");
+            sel.innerHTML = "";
+            json.qr_codes.forEach(q => {
+              const opt = document.createElement("option");
+              opt.value = q.code_id;
+              opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
+              sel.appendChild(opt);
+            });
+          }
+        } catch (e) {}
+      }
+
+      // Centralized Scan & Localization Handler
+      async function registerAndResolveQr(codeId) {
+        try {
+          const resp = await fetch("/api/occupancy/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              qr_code: codeId,
+              occupant_id: occupantId
+            })
+          });
+          const json = await resp.json();
+          if (json.status === "success") {
+            const loc = json.location;
+            startNodeId = loc.node_id;
+            currentFloor = loc.floor;
+            pubCurrentLocationLbl.textContent = `${loc.label} (Level ${loc.floor})`;
+            pubFloorBadge.textContent = `LEVEL ${loc.floor}`;
+            updateFloorUI(currentFloor);
+
+            if (json.route && json.route.success) {
+              renderPublicRouteResult(json.route);
+            } else {
+              calculatePublicRoute();
+            }
+
+            if (json.metrics) {
+              pubStatInside.textContent = `${json.metrics.inside_building} Inside`;
+              pubStatSafe.textContent = `${json.metrics.safely_evacuated} Evacuated`;
+              pubStatScanned.textContent = `${json.metrics.total_scanned}`;
+            }
+
+            // Reset safe banner if scanning new checkpoint
+            isEvacuated = false;
+            pubSafeConfirmationCard.style.display = "none";
+            btnMarkEvacuated.disabled = false;
+            btnMarkEvacuated.textContent = "✓ I Have Safely Evacuated";
+            btnMarkEvacuated.style.background = "#16a34a";
+          } else {
+            alert(json.message || "Failed to resolve QR checkpoint.");
+          }
+        } catch (e) {
+          console.error("Scan error", e);
+          fallbackClientRoute();
+        }
+      }
 
       // Calculate and display public evacuation route
       async function calculatePublicRoute() {
@@ -400,6 +539,7 @@
       }
 
       function renderPublicRouteResult(res) {
+        currentExitNode = res.target_exit_id || res.targetExitId || "NODE_EXIT_G_MAIN";
         pubSafeExitLbl.textContent = res.target_exit_name || res.targetExitName || "Safe Exterior Exit";
         pubDistanceLbl.textContent = `${res.distance_meters || res.distanceMeters}m`;
         pubTimeLbl.textContent = `${res.estimated_time_seconds || res.estimatedTimeSeconds}`;
@@ -422,12 +562,13 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              occupant_id: "MOBILE_OCCUPANT_SOS",
+              occupant_id: occupantId,
               current_node: startNodeId,
               floor_id: currentFloor,
               status: "inside"
             })
           });
+          syncPublicOccupancy();
         } catch (e) {}
       });
 
@@ -442,7 +583,7 @@
 
       document.getElementById("btnConfirmQrScan").addEventListener("click", async () => {
         const selectedCode = document.getElementById("modalQrSelect").value;
-        await qrScanner.resolveCodeId(selectedCode);
+        await registerAndResolveQr(selectedCode);
         document.getElementById("modalQrScanner").style.display = "none";
       });
 
@@ -456,22 +597,9 @@
       });
 
       document.getElementById("btnAcknowledgeGps").addEventListener("click", async () => {
-        alert("✓ Verified at Safe Assembly Ground! Status logged in Emergency Operations.");
         document.getElementById("modalGps").style.display = "none";
         gpsHandoff.stopTracking();
-        try {
-          await fetch("/api/occupancy/report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              occupant_id: "MOBILE_USER_SAFE",
-              floor_id: 0,
-              current_node: "NODE_ASSEMBLY_SOUTH",
-              status: "safe",
-              safe_exit: "NODE_EXIT_G_MAIN"
-            })
-          });
-        } catch (e) {}
+        markSafelyEvacuated();
       });
 
       document.getElementById("btnActionContacts").addEventListener("click", () => {
@@ -481,26 +609,57 @@
         document.getElementById("modalContacts").style.display = "none";
       });
 
-      document.getElementById("btnMarkEvacuated").addEventListener("click", async () => {
-        alert("✓ Evacuation Status Recorded: You are marked as SAFELY EVACUATED.");
+      // Mark Safely Evacuated Action
+      async function markSafelyEvacuated() {
+        isEvacuated = true;
+        pubSafeConfirmationCard.style.display = "block";
+        btnMarkEvacuated.disabled = true;
+        btnMarkEvacuated.textContent = "✓ Status Confirmed: Safely Evacuated";
+        btnMarkEvacuated.style.background = "#059669";
+
         try {
-          await fetch("/api/occupancy/report", {
+          const resp = await fetch("/api/occupancy/report", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              occupant_id: "SELF_EVACUATED",
+              occupant_id: occupantId,
               status: "safe",
-              floor_id: 0
+              floor_id: 0,
+              current_node: currentExitNode,
+              safe_exit: pubSafeExitLbl.textContent
             })
           });
+          const json = await resp.json();
+          if (json.metrics) {
+            pubStatInside.textContent = `${json.metrics.inside_building} Inside`;
+            pubStatSafe.textContent = `${json.metrics.safely_evacuated} Evacuated`;
+            pubStatScanned.textContent = `${json.metrics.total_scanned}`;
+          }
         } catch (e) {}
-      });
 
+        // Prompt GPS modal for assembly navigation
+        setTimeout(() => {
+          document.getElementById("modalGps").style.display = "flex";
+          gpsHandoff.startTracking();
+        }, 600);
+      }
+
+      btnMarkEvacuated.addEventListener("click", () => markSafelyEvacuated());
       document.getElementById("btnRecalculatePublic").addEventListener("click", () => calculatePublicRoute());
 
-      // Initial execution
-      updateFloorUI(3);
-      calculatePublicRoute();
+      // Initial execution & URL QR check
+      populateCheckpointsDropdown();
+      syncPublicOccupancy();
+      setInterval(syncPublicOccupancy, 3500);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlQr = urlParams.get("qr");
+      if (urlQr) {
+        await registerAndResolveQr(urlQr);
+      } else {
+        updateFloorUI(3);
+        calculatePublicRoute();
+      }
     });
   </script>
 </body>

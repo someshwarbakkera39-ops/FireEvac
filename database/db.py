@@ -40,6 +40,15 @@ def init_db():
     conn = get_db()
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
         conn.executescript(f.read())
+    # Ensure migration columns
+    try:
+        conn.execute("ALTER TABLE occupancy_sim ADD COLUMN scanned_qr TEXT")
+    except Exception:
+        pass
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_occ_sim_occupant_id ON occupancy_sim(occupant_id)")
+    except Exception:
+        pass
     conn.commit()
 
 def query_db(query, args=(), one=False):

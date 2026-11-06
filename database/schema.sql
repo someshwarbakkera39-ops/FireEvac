@@ -82,14 +82,25 @@ CREATE TABLE IF NOT EXISTS hazards (
 -- 7. Drill Tracking & Real-Time Occupancy Records
 CREATE TABLE IF NOT EXISTS occupancy_sim (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    occupant_id TEXT NOT NULL,
+    occupant_id TEXT UNIQUE NOT NULL,
     floor_id INTEGER NOT NULL,
     current_node TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'inside', -- 'inside', 'safe', 'evacuated', 'missing'
+    scanned_qr TEXT,
     safe_exit TEXT,
     last_ping TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (current_node) REFERENCES nodes(id) ON DELETE SET NULL,
     FOREIGN KEY (floor_id) REFERENCES floors(id) ON DELETE CASCADE
+);
+
+-- 8. QR Scan Audit & Incident Log
+CREATE TABLE IF NOT EXISTS qr_scans_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    occupant_id TEXT NOT NULL,
+    code_id TEXT NOT NULL,
+    floor_id INTEGER NOT NULL,
+    node_id TEXT NOT NULL,
+    scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create Indices for High-Frequency Spatial Lookups

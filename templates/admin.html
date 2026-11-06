@@ -153,34 +153,84 @@
         <div class="section-title">Live Occupancy & Evacuation Monitor</div>
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="num" id="adminOccInside" style="color: #fbbf24;">5</div>
+            <div class="num" id="adminOccInside" style="color: #fbbf24;">--</div>
             <div class="lbl">Inside Facility</div>
           </div>
           <div class="metric-card">
-            <div class="num" id="adminOccSafe" style="color: #4ade80;">7</div>
+            <div class="num" id="adminOccSafe" style="color: #4ade80;">--</div>
             <div class="lbl">Safely Evacuated</div>
           </div>
           <div class="metric-card">
-            <div class="num" id="adminOccMissing" style="color: #ef4444;">0</div>
-            <div class="lbl">Missing / Trapped</div>
+            <div class="num" id="adminOccScanned" style="color: #38bdf8;">--</div>
+            <div class="lbl">Total Scanned QR</div>
           </div>
           <div class="metric-card">
             <div class="num" id="adminActiveHazards" style="color: #fca5a5;">0</div>
             <div class="lbl">Active Hazards</div>
           </div>
         </div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 8px; display: flex; justify-content: space-between; background: rgba(15,23,42,0.6); padding: 5px 8px; border-radius: 4px;">
+          <span>Inside by Floor:</span>
+          <span>4F:<strong id="flCount4" style="color:#fbbf24;">0</strong> | 3F:<strong id="flCount3" style="color:#fbbf24;">0</strong> | 2F:<strong id="flCount2" style="color:#fbbf24;">0</strong> | 1F:<strong id="flCount1" style="color:#fbbf24;">0</strong> | G:<strong id="flCount0" style="color:#fbbf24;">0</strong></span>
+        </div>
       </div>
 
-      <!-- Simulation Center (Drill Scenarios) -->
+      <!-- Simulation Center (Live Animated Drill Simulator) -->
       <div class="sidebar-section">
         <div class="section-title">
           <span>Drill Simulation Center</span>
-          <span style="font-size: 10px; color: #38bdf8; font-weight: normal;">No IoT Hardware Req.</span>
+          <span style="font-size: 10px; color: #38bdf8; font-weight: normal;">Live Digital Twin</span>
+        </div>
+
+        <!-- Live Simulation Controls -->
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <button id="btnStartDrill" class="canvas-btn" style="flex: 2; background: #16a34a; border-color: #22c55e; color: #fff; font-weight: 800; justify-content: center;">
+            ▶ Start Drill
+          </button>
+          <button id="btnPauseDrill" class="canvas-btn" style="flex: 1; justify-content: center;" title="Pause simulation">
+            ⏸ Pause
+          </button>
+          <button id="btnResetDrill" class="canvas-btn" style="flex: 1; justify-content: center;" title="Reset occupants and drill state">
+            🔄 Reset
+          </button>
+        </div>
+
+        <!-- Speed & Density Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: #94a3b8;">
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>Speed:</span>
+            <button class="sim-speed-btn active" data-speed="1" style="background: #2563eb; color: #fff; border: none; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">1x</button>
+            <button class="sim-speed-btn" data-speed="2.5" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">2.5x</button>
+            <button class="sim-speed-btn" data-speed="5" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">5x</button>
+          </div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>Crowd:</span>
+            <select id="simCrowdSelect" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; font-size: 10px; padding: 2px 4px; border-radius: 3px;">
+              <option value="12">12 Seeded</option>
+              <option value="25">25 Occupants</option>
+              <option value="40">40 Occupants</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Drill Telemetry Dashboard -->
+        <div style="background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: #94a3b8;">Drill Elapsed Time:</span>
+            <strong id="simDrillTimer" style="color: #38bdf8; font-family: monospace; font-size: 12px;">00:00</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
+            <span style="color: #94a3b8;">Evacuation Flow Rate:</span>
+            <strong id="simDrillRate" style="color: #4ade80; font-family: monospace;">0.0 /min</strong>
+          </div>
+          <div style="background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">
+            <div id="simDrillProgress" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.3s;"></div>
+          </div>
         </div>
         
         <div class="drill-card active" id="drillBaseline">
           <div style="font-size: 12px; font-weight: bold; color: #4ade80;">Drill 1: Standard Baseline Evacuation</div>
-          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Normal operations; tests shortest path from Floor 4 Auditorium to ground exits.</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Normal operations; tests shortest path from all rooms to ground exits.</div>
         </div>
 
         <div class="drill-card" id="drillGroundExitBlocked">
@@ -190,7 +240,7 @@
 
         <div class="drill-card" id="drillStairBBlocked">
           <div style="font-size: 12px; font-weight: bold; color: #fca5a5;">Drill 3: Staircase B Failure on Floor 2</div>
-          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Engulfs Staircase B on L2; tests skybridge rerouting of AI Lab to Staircase A.</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Engulfs Staircase B on L2; tests skybridge rerouting of East wing to Staircase A.</div>
         </div>
 
         <div class="drill-card" id="drillCompoundFire">
@@ -224,7 +274,7 @@
       <div class="sidebar-section">
         <div class="section-title">Printable QR Code Testing Kit</div>
         <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
-          Generate printable physical test markers calibrated for prototype testing:
+          Camera-scannable markers encoding direct mobile navigation links:
         </div>
         <select id="adminQrSelect" class="form-input" style="width: 100%; margin-bottom: 8px;">
           <option value="QR_3_AILAB">Floor 3: AI Lab 305 Checkpoint</option>
@@ -237,20 +287,29 @@
         <div id="qrCardPreview" class="qr-badge-preview">
           <h4 id="qrCardTitle">AI & Autonomous Robotics Lab 305</h4>
           <p id="qrCardSub">Block A • Floor 3 • Stationary Positioning Checkpoint</p>
-          <div id="qrSvgHolder" style="margin: 10px auto; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; background: #fff;">
-            <!-- Rendered SVG QR -->
+          <div id="qrSvgHolder" style="margin: 10px auto; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 4px; border-radius: 6px;">
+            <img id="adminQrImage" src="/api/qr/image/QR_3_AILAB" alt="QR Code" style="width: 130px; height: 130px; display: block;" />
           </div>
           <div style="font-size: 10px; font-weight: bold; color: #1e293b; font-family: monospace;" id="qrCardCode">
             PAYLOAD: QR_3_AILAB
           </div>
-          <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
-            Scan with smartphone camera for instant floor & node routing
+          <div style="font-size: 9px; color: #16a34a; font-weight: bold; margin-top: 2px;">
+            ⚡ Camera-scannable: Opens /public?qr=... on mobile
           </div>
         </div>
 
-        <button id="btnPrintQrBadge" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px;">
-          🖨️ Print / Export QR Badge Marker
-        </button>
+        <div style="display: flex; gap: 6px; margin-top: 8px;">
+          <a id="btnDownloadQrPng" href="/api/qr/image/QR_3_AILAB" download="QR_3_AILAB.png" class="canvas-btn" style="flex: 1; justify-content: center; text-decoration: none;">
+            ⬇️ Download PNG
+          </a>
+          <a href="/public?qr=QR_3_AILAB" id="btnTestQrLink" target="_blank" class="canvas-btn" style="flex: 1; justify-content: center; text-decoration: none;">
+            🔗 Test Link
+          </a>
+        </div>
+
+        <a href="/static/qr_testkit.html" target="_blank" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px; background: #2563eb; color: #fff; text-decoration: none; font-weight: bold;">
+          🖨️ Open Full Printable Test Kit (15 Badges)
+        </a>
       </div>
     </aside>
   </div>
@@ -299,7 +358,23 @@
       const adminActiveHazards = document.getElementById("adminActiveHazards");
       const adminOccInside = document.getElementById("adminOccInside");
       const adminOccSafe = document.getElementById("adminOccSafe");
+      const adminOccScanned = document.getElementById("adminOccScanned");
       const alarmBanner = document.getElementById("alarmBroadcastBanner");
+
+      const flCount4 = document.getElementById("flCount4");
+      const flCount3 = document.getElementById("flCount3");
+      const flCount2 = document.getElementById("flCount2");
+      const flCount1 = document.getElementById("flCount1");
+      const flCount0 = document.getElementById("flCount0");
+
+      const simDrillTimer = document.getElementById("simDrillTimer");
+      const simDrillRate = document.getElementById("simDrillRate");
+      const simDrillProgress = document.getElementById("simDrillProgress");
+      const btnStartDrill = document.getElementById("btnStartDrill");
+      const btnPauseDrill = document.getElementById("btnPauseDrill");
+      const btnResetDrill = document.getElementById("btnResetDrill");
+      const simCrowdSelect = document.getElementById("simCrowdSelect");
+      const speedButtons = document.querySelectorAll(".sim-speed-btn");
 
       function updateFloorUI(level) {
         currentFloor = parseInt(level, 10);
@@ -338,11 +413,9 @@
       svgElem.addEventListener("click", (e) => {
         if (renderer.isPanning) return;
         const rect = svgElem.getBoundingClientRect();
-        // Calculate canvas coordinates accounting for zoom and pan
         const clickX = (e.clientX - rect.left - renderer.panX) / renderer.zoom;
         const clickY = (e.clientY - rect.top - renderer.panY) / renderer.zoom;
 
-        // Ensure click is within building canvas bounding box (100 to 1100, 120 to 620)
         if (clickX >= 80 && clickX <= 1120 && clickY >= 100 && clickY <= 650) {
           handleCanvasPointClick(Math.round(clickX), Math.round(clickY), currentFloor, `Point (${Math.round(clickX)}, ${Math.round(clickY)})`);
         }
@@ -350,16 +423,14 @@
 
       async function handleCanvasPointClick(x, y, floorLevel, label) {
         if (activeToolMode === "inspect") {
-          // Find closest hazard to clear
           const haz = activeHazards.find(h => h.floor_id === floorLevel && Math.hypot(h.location_x - x, h.location_y - y) <= (h.radius || 50));
           if (haz) {
             await fetch(`/api/hazards/${haz.id}`, { method: "DELETE" });
-            syncHazardsFromDb();
+            await syncHazardsFromDb();
           }
           return;
         }
 
-        // Place Hazard
         const payload = {
           floor_id: floorLevel,
           location_x: x,
@@ -375,7 +446,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
-          syncHazardsFromDb();
+          await syncHazardsFromDb();
         } catch (e) {
           console.error("Failed to place hazard", e);
         }
@@ -405,9 +476,12 @@
           });
 
           renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
-
-          // Also calculate sample evacuation route to preview dynamic reroute
           previewAdminRoute();
+
+          // Inform live simulation engine about new hazards for mid-flight rerouting
+          if (drillSim && drillSim.isRunning) {
+            drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
+          }
         } catch (e) {
           console.warn("Sync hazards fallback", e);
         }
@@ -427,6 +501,30 @@
         }
       }
 
+      // Sync Occupancy Metrics
+      async function syncOccupancyMetrics() {
+        try {
+          const resp = await fetch("/api/occupancy");
+          const json = await resp.json();
+          if (json.status === "success" && json.metrics) {
+            const m = json.metrics;
+            if (!drillSim || !drillSim.isRunning) {
+              adminOccInside.textContent = m.inside_building;
+              adminOccSafe.textContent = m.safely_evacuated;
+              adminOccScanned.textContent = m.total_scanned;
+
+              if (json.by_floor) {
+                flCount4.textContent = json.by_floor["4"] || 0;
+                flCount3.textContent = json.by_floor["3"] || 0;
+                flCount2.textContent = json.by_floor["2"] || 0;
+                flCount1.textContent = json.by_floor["1"] || 0;
+                flCount0.textContent = json.by_floor["0"] || 0;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
       // Corridor Checkbox Toggles
       document.querySelectorAll(".corridor-chk").forEach(chk => {
         chk.addEventListener("change", async (e) => {
@@ -443,6 +541,9 @@
           });
           renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
           previewAdminRoute();
+          if (drillSim && drillSim.isRunning) {
+            drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
+          }
         });
       });
 
@@ -453,7 +554,311 @@
           else blockedNodes.delete(nid);
           renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
           previewAdminRoute();
+          if (drillSim && drillSim.isRunning) {
+            drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
+          }
         });
+      });
+
+      // ======================================================================
+      // Digital Twin Live Drill Simulation Engine
+      // ======================================================================
+      class DrillSimulationController {
+        constructor() {
+          this.isRunning = false;
+          this.speedMultiplier = 1;
+          this.timerSeconds = 0;
+          this.timerInterval = null;
+          this.animFrameId = null;
+          this.occupants = [];
+          this.totalOccupants = 0;
+          this.evacuatedCount = 0;
+          this.lastTickTime = performance.now();
+        }
+
+        async initialize(crowdSize = 12) {
+          this.stop();
+          this.timerSeconds = 0;
+          this.evacuatedCount = 0;
+          simDrillTimer.textContent = "00:00";
+          simDrillRate.textContent = "0.0 /min";
+          simDrillProgress.style.width = "0%";
+
+          try {
+            if (crowdSize > 12) {
+              await fetch("/api/simulation/populate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ count: crowdSize })
+              });
+            } else {
+              await fetch("/api/occupancy/reset", { method: "POST" });
+            }
+
+            const resp = await fetch("/api/occupancy");
+            const json = await resp.json();
+            const records = json.records || [];
+
+            this.occupants = [];
+            for (const r of records) {
+              const startNodeId = r.current_node;
+              const startNode = graphData ? graphData.nodes[startNodeId] : null;
+              if (!startNode) continue;
+
+              const route = clientDijkstra ? clientDijkstra.calculateRoute(startNodeId, {
+                blockedNodes: Array.from(blockedNodes),
+                blockedEdges: Array.from(blockedEdges)
+              }) : null;
+
+              if (route && route.success && route.path.length > 0) {
+                this.occupants.push({
+                  id: r.occupant_id,
+                  scanned_qr: r.scanned_qr,
+                  floor: startNode.floor,
+                  x: startNode.x,
+                  y: startNode.y,
+                  status: "inside",
+                  path: route.path,
+                  pathIndex: 0,
+                  targetExit: route.target_exit_id,
+                  speed: 70 + Math.random() * 25, // canvas distance units per second
+                  stairDelay: 0,
+                  isRerouting: false
+                });
+              }
+            }
+
+            this.totalOccupants = this.occupants.length;
+            this.evacuatedCount = 0;
+            renderer.setSimulationOccupants(this.occupants);
+            this.updateUiMetrics();
+          } catch (e) {
+            console.error("Simulation initialization failed", e);
+          }
+        }
+
+        start() {
+          if (this.isRunning) return;
+          if (this.occupants.length === 0) {
+            this.initialize(parseInt(simCrowdSelect.value, 10)).then(() => this.start());
+            return;
+          }
+
+          this.isRunning = true;
+          this.lastTickTime = performance.now();
+          btnStartDrill.style.background = "#eab308";
+          btnStartDrill.textContent = "▶ Running Drill...";
+
+          this.timerInterval = setInterval(() => {
+            this.timerSeconds += 1;
+            this.updateUiMetrics();
+          }, 1000);
+
+          const loop = (now) => {
+            if (!this.isRunning) return;
+            const dt = Math.min((now - this.lastTickTime) / 1000, 0.1);
+            this.lastTickTime = now;
+
+            this.step(dt * this.speedMultiplier);
+            renderer.renderSimulationLayer();
+
+            const remaining = this.occupants.filter(o => o.status === "inside").length;
+            if (remaining === 0 && this.totalOccupants > 0) {
+              this.stop();
+              btnStartDrill.style.background = "#16a34a";
+              btnStartDrill.textContent = "▶ Start Drill";
+              alert(`🎉 Evacuation Drill Completed!\nAll ${this.totalOccupants} occupants evacuated safely in ${this.formatTime(this.timerSeconds)}.`);
+              return;
+            }
+
+            this.animFrameId = requestAnimationFrame(loop);
+          };
+
+          this.animFrameId = requestAnimationFrame(loop);
+        }
+
+        pause() {
+          this.isRunning = false;
+          clearInterval(this.timerInterval);
+          if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+          btnStartDrill.style.background = "#16a34a";
+          btnStartDrill.textContent = "▶ Resume Drill";
+        }
+
+        stop() {
+          this.isRunning = false;
+          clearInterval(this.timerInterval);
+          if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+          btnStartDrill.style.background = "#16a34a";
+          btnStartDrill.textContent = "▶ Start Drill";
+        }
+
+        step(dt) {
+          for (const occ of this.occupants) {
+            if (occ.status !== "inside") continue;
+
+            if (occ.stairDelay > 0) {
+              occ.stairDelay -= dt;
+              continue;
+            }
+
+            const targetNodeId = occ.path[occ.pathIndex];
+            const targetNode = graphData ? graphData.nodes[targetNodeId] : null;
+
+            if (!targetNode) {
+              occ.status = "safe";
+              this.evacuatedCount++;
+              this.reportSafeExit(occ);
+              continue;
+            }
+
+            // Floor descent across staircase
+            if (targetNode.floor !== occ.floor) {
+              occ.floor = targetNode.floor;
+              occ.x = targetNode.x;
+              occ.y = targetNode.y;
+              occ.stairDelay = 0.5 / this.speedMultiplier;
+              occ.pathIndex++;
+              continue;
+            }
+
+            const dx = targetNode.x - occ.x;
+            const dy = targetNode.y - occ.y;
+            const dist = Math.hypot(dx, dy);
+            const moveStep = occ.speed * dt;
+
+            if (dist <= moveStep) {
+              occ.x = targetNode.x;
+              occ.y = targetNode.y;
+              occ.pathIndex++;
+
+              if (targetNode.type === "exit" || occ.pathIndex >= occ.path.length) {
+                occ.status = "safe";
+                this.evacuatedCount++;
+                this.reportSafeExit(occ);
+              }
+            } else {
+              occ.x += (dx / dist) * moveStep;
+              occ.y += (dy / dist) * moveStep;
+            }
+          }
+
+          this.updateUiMetrics();
+        }
+
+        handleHazardChange(bNodes, bEdges) {
+          const bSet = new Set(bNodes);
+          for (const occ of this.occupants) {
+            if (occ.status !== "inside") continue;
+
+            const remaining = occ.path.slice(occ.pathIndex);
+            if (remaining.some(nid => bSet.has(nid))) {
+              let closestNodeId = null;
+              let minD = Infinity;
+              for (const nid in graphData.nodes) {
+                const n = graphData.nodes[nid];
+                if (n.floor === occ.floor && !bSet.has(nid)) {
+                  const d = Math.hypot(n.x - occ.x, n.y - occ.y);
+                  if (d < minD) {
+                    minD = d;
+                    closestNodeId = nid;
+                  }
+                }
+              }
+
+              if (closestNodeId && clientDijkstra) {
+                const newRoute = clientDijkstra.calculateRoute(closestNodeId, {
+                  blockedNodes: bNodes,
+                  blockedEdges: bEdges
+                });
+                if (newRoute && newRoute.success && newRoute.path.length > 0) {
+                  occ.path = newRoute.path;
+                  occ.pathIndex = 0;
+                  occ.isRerouting = true;
+                  setTimeout(() => { occ.isRerouting = false; }, 2500);
+                }
+              }
+            }
+          }
+        }
+
+        async reportSafeExit(occ) {
+          try {
+            await fetch("/api/occupancy/report", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                occupant_id: occ.id,
+                status: "safe",
+                floor_id: 0,
+                current_node: occ.targetExit || "NODE_EXIT_G_MAIN",
+                safe_exit: occ.targetExit || "NODE_EXIT_G_MAIN"
+              })
+            });
+          } catch (e) {}
+        }
+
+        updateUiMetrics() {
+          const inside = this.occupants.filter(o => o.status === "inside").length;
+          const safe = this.evacuatedCount;
+          const total = this.totalOccupants;
+          const scanned = this.occupants.filter(o => o.scanned_qr).length;
+
+          adminOccInside.textContent = inside;
+          adminOccSafe.textContent = safe;
+          adminOccScanned.textContent = scanned;
+
+          const byFloor = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+          this.occupants.forEach(o => {
+            if (o.status === "inside" && byFloor[o.floor] !== undefined) {
+              byFloor[o.floor]++;
+            }
+          });
+
+          flCount4.textContent = byFloor[4];
+          flCount3.textContent = byFloor[3];
+          flCount2.textContent = byFloor[2];
+          flCount1.textContent = byFloor[1];
+          flCount0.textContent = byFloor[0];
+
+          simDrillTimer.textContent = this.formatTime(this.timerSeconds);
+          const rate = this.timerSeconds > 0 ? ((safe / this.timerSeconds) * 60).toFixed(1) : "0.0";
+          simDrillRate.textContent = `${rate} /min`;
+
+          const progress = total > 0 ? Math.round((safe / total) * 100) : 0;
+          simDrillProgress.style.width = `${progress}%`;
+        }
+
+        formatTime(sec) {
+          const m = Math.floor(sec / 60).toString().padStart(2, "0");
+          const s = (sec % 60).toString().padStart(2, "0");
+          return `${m}:${s}`;
+        }
+      }
+
+      const drillSim = new DrillSimulationController();
+
+      // Drill Playback Controls
+      btnStartDrill.addEventListener("click", () => drillSim.start());
+      btnPauseDrill.addEventListener("click", () => drillSim.pause());
+      btnResetDrill.addEventListener("click", () => drillSim.initialize(parseInt(simCrowdSelect.value, 10)));
+
+      speedButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          speedButtons.forEach(b => {
+            b.classList.remove("active");
+            b.style.background = "#1e293b";
+            b.style.color = "#94a3b8";
+          });
+          btn.classList.add("active");
+          btn.style.background = "#2563eb";
+          btn.style.color = "#fff";
+          drillSim.speedMultiplier = parseFloat(btn.getAttribute("data-speed"));
+        });
+      });
+
+      simCrowdSelect.addEventListener("change", () => {
+        drillSim.initialize(parseInt(simCrowdSelect.value, 10));
       });
 
       // Simulation Center Drill Cards
@@ -504,7 +909,8 @@
             updateFloorUI(1);
           }
 
-          syncHazardsFromDb();
+          await syncHazardsFromDb();
+          drillSim.initialize(parseInt(simCrowdSelect.value, 10)).then(() => drillSim.start());
         });
       });
 
@@ -523,73 +929,60 @@
         drillCards.forEach(d => d.classList.remove("active"));
         drillCards[0].classList.add("active");
         syncHazardsFromDb();
+        drillSim.initialize(parseInt(simCrowdSelect.value, 10));
       });
 
-      // QR Badge Renderer (Pure Vector QR Matrix generation)
-      function renderQrBadge(codeId) {
-        const qrMeta = {
-          "QR_3_AILAB": { title: "AI & Autonomous Robotics Lab 305", sub: "Block A • Floor 3 • Stationary Positioning Checkpoint", node: "NODE_ROOM_3_05" },
-          "QR_4_AUDITORIUM": { title: "Grand Auditorium 406", sub: "Block A • Floor 4 • Top Level Foyer Column", node: "NODE_ROOM_4_06" },
-          "QR_2_LECTURE": { title: "Smart Lecture Hall 201", sub: "Block A • Floor 2 • Tiered Theater Entry", node: "NODE_ROOM_2_01" },
-          "QR_1_FACULTY": { title: "Faculty Department Office 101", sub: "Block A • Floor 1 • West Wing Corridor Plaque", node: "NODE_ROOM_1_01" },
-          "QR_G_ATRIUM": { title: "Central Reception Atrium", sub: "Block A • Ground Floor • Main Entrance Concourse", node: "NODE_LOBBY_SOUTH" }
-        };
+      // QR Badge Renderer (Real Image & Scannable URL)
+      const adminQrSelect = document.getElementById("adminQrSelect");
+      const adminQrImage = document.getElementById("adminQrImage");
+      const btnDownloadQrPng = document.getElementById("btnDownloadQrPng");
+      const btnTestQrLink = document.getElementById("btnTestQrLink");
 
-        const meta = qrMeta[codeId] || { title: codeId, sub: "Stationary QR Checkpoint", node: codeId };
-        document.getElementById("qrCardTitle").textContent = meta.title;
-        document.getElementById("qrCardSub").textContent = meta.sub;
-        document.getElementById("qrCardCode").textContent = `PAYLOAD: ${codeId}`;
-
-        // Render SVG QR pattern
-        document.getElementById("qrSvgHolder").innerHTML = `
-          <svg viewBox="0 0 100 100" width="115" height="115">
-            <!-- QR Position Detection Patterns -->
-            <rect x="5" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="9" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="13" y="13" width="12" height="12" fill="#0f172a"/>
-
-            <rect x="67" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="71" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="75" y="13" width="12" height="12" fill="#0f172a"/>
-
-            <rect x="5" y="67" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="9" y="71" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="13" y="75" width="12" height="12" fill="#0f172a"/>
-
-            <!-- QR Data Matrix Cells -->
-            <rect x="38" y="10" width="6" height="6" fill="#0f172a"/>
-            <rect x="48" y="10" width="6" height="6" fill="#0f172a"/>
-            <rect x="38" y="24" width="6" height="6" fill="#0f172a"/>
-            <rect x="56" y="24" width="6" height="6" fill="#0f172a"/>
-
-            <rect x="10" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="24" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="38" y="38" width="24" height="24" fill="#0f172a"/>
-            <rect x="42" y="42" width="16" height="16" fill="#ffffff"/>
-            <circle cx="50" cy="50" r="4" fill="#2563eb"/>
-
-            <rect x="68" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="82" y="38" width="6" height="6" fill="#0f172a"/>
-
-            <rect x="38" y="68" width="6" height="6" fill="#0f172a"/>
-            <rect x="48" y="78" width="6" height="6" fill="#0f172a"/>
-            <rect x="68" y="68" width="6" height="6" fill="#0f172a"/>
-            <rect x="80" y="80" width="8" height="8" fill="#0f172a"/>
-          </svg>
-        `;
+      async function populateAdminQrDropdown() {
+        try {
+          const resp = await fetch("/api/qr");
+          const json = await resp.json();
+          if (json.status === "success" && json.qr_codes) {
+            adminQrSelect.innerHTML = "";
+            json.qr_codes.forEach(q => {
+              const opt = document.createElement("option");
+              opt.value = q.code_id;
+              opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
+              adminQrSelect.appendChild(opt);
+            });
+          }
+        } catch (e) {}
       }
 
-      document.getElementById("adminQrSelect").addEventListener("change", (e) => {
-        renderQrBadge(e.target.value);
-      });
-      renderQrBadge("QR_3_AILAB");
+      function updateAdminQrBadge(codeId) {
+        document.getElementById("qrCardCode").textContent = `PAYLOAD: ${codeId}`;
+        adminQrImage.src = `/api/qr/image/${codeId}?t=${Date.now()}`;
+        btnDownloadQrPng.href = `/api/qr/image/${codeId}`;
+        btnDownloadQrPng.download = `${codeId}.png`;
+        btnTestQrLink.href = `/public?qr=${codeId}`;
 
-      document.getElementById("btnPrintQrBadge").addEventListener("click", () => {
-        window.print();
+        // Fetch label metadata
+        fetch(`/api/qr/${codeId}`).then(r => r.json()).then(j => {
+          if (j.status === "success") {
+            document.getElementById("qrCardTitle").textContent = j.qr.location_label;
+            document.getElementById("qrCardSub").textContent = `${j.qr.description} (Level ${j.floor})`;
+          }
+        }).catch(() => {});
+      }
+
+      adminQrSelect.addEventListener("change", (e) => {
+        updateAdminQrBadge(e.target.value);
       });
 
-      // Initial Sync
-      syncHazardsFromDb();
+      // Initial Sync & Simulation Setup
+      await syncHazardsFromDb();
+      await syncOccupancyMetrics();
+      await populateAdminQrDropdown();
+      updateAdminQrBadge("QR_3_AILAB");
+      await drillSim.initialize(12);
+
+      // Periodically poll occupancy metrics every 3 seconds to keep counters fresh
+      setInterval(syncOccupancyMetrics, 3000);
     });
   </script>
 </body>

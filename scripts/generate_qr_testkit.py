@@ -1,58 +1,56 @@
 """
 Physical QR Code Testing Kit Generator
-Generates printable, high-contrast QR test badges for all 15 stationary indoor checkpoints.
+Generates printable, high-contrast, camera-scannable QR test badges for all stationary indoor checkpoints.
 Blueprint Section 14 Deliverable
 """
 
 import os
 import json
 import sqlite3
+import qrcode
+import qrcode.image.svg
+import io
 
-def generate_svg_qr(code_id):
-    """Generates a clean vector SVG QR matrix for the given code_id."""
-    # Deterministic hash pattern for clean vector rendering
-    hash_val = sum(ord(c) for c in code_id)
-    mod1 = (hash_val % 7) * 2
-    mod2 = (hash_val % 11) * 2
+def generate_svg_qr(code_id, host="http://localhost:5000"):
+    """Generates a genuine standards-compliant vector SVG QR code encoding the public navigation URL."""
+    scan_url = f"{host.rstrip('/')}/public?qr={code_id}"
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+        image_factory=qrcode.image.svg.SvgPathImage
+    )
+    qr.add_data(scan_url)
+    qr.make(fit=True)
+    img = qr.make_image()
+    svg_str = img.to_string(encoding="unicode")
+    # Add responsive sizing attributes
+    svg_str = svg_str.replace('<svg ', '<svg class="scannable-qr" style="width:140px; height:140px; display:block; margin:0 auto;" ')
+    return svg_str, scan_url
 
-    return f"""
-    <svg viewBox="0 0 100 100" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-      <!-- Position Detection Squares -->
-      <rect x="6" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
-      <rect x="10" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
-      <rect x="14" y="14" width="10" height="10" fill="#0f172a"/>
+def generate_png_qr(code_id, output_path, host="http://localhost:5000"):
+    """Generates and saves a high-contrast PNG QR image for physical badge printing."""
+    scan_url = f"{host.rstrip('/')}/public?qr={code_id}"
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=3
+    )
+    qr.add_data(scan_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0f172a", back_color="#ffffff")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    img.save(output_path, format="PNG")
+    return output_path
 
-      <rect x="68" y="6" width="26" height="26" fill="#0f172a" rx="3"/>
-      <rect x="72" y="10" width="18" height="18" fill="#ffffff" rx="1"/>
-      <rect x="76" y="14" width="10" height="10" fill="#0f172a"/>
-
-      <rect x="6" y="68" width="26" height="26" fill="#0f172a" rx="3"/>
-      <rect x="10" y="72" width="18" height="18" fill="#ffffff" rx="1"/>
-      <rect x="14" y="76" width="10" height="10" fill="#0f172a"/>
-
-      <!-- Timing & Data Matrix Cells -->
-      <line x1="36" y1="12" x2="64" y2="12" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
-      <line x1="12" y1="36" x2="12" y2="64" stroke="#0f172a" stroke-width="4" stroke-dasharray="4,4"/>
-
-      <!-- Center Alignment Pattern -->
-      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2"/>
-      <rect x="46" y="46" width="8" height="8" fill="#ffffff"/>
-      <rect x="48" y="48" width="4" height="4" fill="#2563eb"/>
-
-      <!-- Unique Identification Pattern -->
-      <rect x="{36 + (mod1 % 20)}" y="20" width="6" height="6" fill="#0f172a"/>
-      <rect x="40" y="{60 + (mod2 % 20)}" width="6" height="6" fill="#0f172a"/>
-      <rect x="68" y="40" width="8" height="6" fill="#0f172a"/>
-      <rect x="80" y="68" width="6" height="8" fill="#0f172a"/>
-      <rect x="58" y="78" width="8" height="6" fill="#0f172a"/>
-      <rect x="24" y="54" width="6" height="6" fill="#0f172a"/>
-    </svg>
-    """
-
-def build_printable_html():
+def build_printable_html(host="http://localhost:5000"):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     db_path = os.path.join(base_dir, "database", "digital_twin.db")
-    output_path = os.path.join(base_dir, "static", "qr_testkit.html")
+    output_html_path = os.path.join(base_dir, "static", "qr_testkit.html")
+    png_dir = os.path.join(base_dir, "static", "qr_codes")
+    os.makedirs(png_dir, exist_ok=True)
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -63,25 +61,42 @@ def build_printable_html():
 
     cards_html = ""
     for r in rows:
-        svg = generate_svg_qr(r["code_id"])
+        code_id = r["code_id"]
+        svg, scan_url = generate_svg_qr(code_id, host=host)
+        png_path = os.path.join(png_dir, f"{code_id}.png")
+        generate_png_qr(code_id, png_path, host=host)
+
         cards_html += f"""
-        <div class="qr-card">
+        <div class="qr-card" id="card_{code_id}">
           <div class="card-header">
             <span class="facility-tag">BLOCK A DIGITAL TWIN</span>
             <span class="floor-pill">LEVEL {r['floor_id']}</span>
           </div>
           <div class="card-title">{r['location_label']}</div>
           <div class="card-sub">{r['description']}</div>
+          
           <div class="qr-svg-wrap">
             {svg}
           </div>
+
           <div class="payload-box">
-            <code>PAYLOAD: {r['code_id']}</code>
+            <code>SCAN: {code_id}</code>
           </div>
+
           <div class="meta-footer">
-            <div><strong>Node:</strong> {r['node_id']}</div>
-            <div><strong>Canvas:</strong> ({r['x_coord']}, {r['y_coord']})</div>
-            <div style="color:#16a34a; font-weight:bold; margin-top:2px;">Scan with mobile browser for instant evacuation guidance</div>
+            <div style="font-family: monospace; font-size: 10px; color: #2563eb; margin-bottom: 4px; word-break: break-all;">
+              <a href="{scan_url}" target="_blank" style="color: #2563eb; text-decoration: none;">{scan_url}</a>
+            </div>
+            <div><strong>Waypoint Node:</strong> {r['node_id']}</div>
+            <div><strong>Map Coordinate:</strong> ({r['x_coord']}, {r['y_coord']})</div>
+            <div style="color: #16a34a; font-weight: 800; margin-top: 6px;">
+              ⚡ Scan with phone camera for instant safe evacuation guidance
+            </div>
+          </div>
+
+          <div style="margin-top: 8px; display: flex; gap: 6px;">
+            <a href="/public?qr={code_id}" target="_blank" class="test-btn">Test Route</a>
+            <a href="/api/qr/image/{code_id}" download="{code_id}.png" class="test-btn download-btn">Download PNG</a>
           </div>
         </div>
         """
@@ -90,42 +105,48 @@ def build_printable_html():
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Physical QR Code Testing Kit | Block A Facility Evacuation System</title>
   <style>
     @page {{
       size: A4 portrait;
-      margin: 10mm;
+      margin: 8mm;
     }}
     body {{
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #f1f5f9;
+      background: #0f172a;
       color: #0f172a;
       margin: 0;
       padding: 20px;
     }}
     .print-bar {{
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto 20px auto;
       background: #1e293b;
       color: #fff;
-      padding: 14px 20px;
-      border-radius: 8px;
+      padding: 16px 24px;
+      border-radius: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }}
     .btn-print {{
       background: #16a34a;
       color: #fff;
       border: none;
-      padding: 8px 16px;
-      font-weight: bold;
+      padding: 10px 18px;
+      font-weight: 800;
       border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
+      transition: background 0.15s;
+    }}
+    .btn-print:hover {{
+      background: #15803d;
     }}
     .sheet-grid {{
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -133,8 +154,8 @@ def build_printable_html():
     }}
     .qr-card {{
       background: #ffffff;
-      border: 2px dashed #94a3b8;
-      border-radius: 8px;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
       padding: 16px;
       box-sizing: border-box;
       display: flex;
@@ -142,6 +163,7 @@ def build_printable_html():
       align-items: center;
       text-align: center;
       break-inside: avoid;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     }}
     .card-header {{
       width: 100%;
@@ -157,35 +179,38 @@ def build_printable_html():
       letter-spacing: 0.8px;
     }}
     .floor-pill {{
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 800;
       background: #2563eb;
       color: #fff;
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
     }}
     .card-title {{
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 800;
       color: #0f172a;
       margin-bottom: 2px;
     }}
     .card-sub {{
-      font-size: 10px;
+      font-size: 11px;
       color: #64748b;
       margin-bottom: 8px;
     }}
     .qr-svg-wrap {{
       background: #ffffff;
-      padding: 6px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
+      padding: 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
       margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }}
     .payload-box {{
       background: #f8fafc;
       border: 1px solid #cbd5e1;
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 4px;
       font-size: 11px;
       font-family: monospace;
@@ -194,27 +219,51 @@ def build_printable_html():
       margin-bottom: 6px;
     }}
     .meta-footer {{
-      font-size: 9px;
+      font-size: 10px;
       color: #64748b;
-      line-height: 1.3;
+      line-height: 1.4;
+      width: 100%;
+    }}
+    .test-btn {{
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-decoration: none;
+      cursor: pointer;
+    }}
+    .test-btn:hover {{
+      background: #e2e8f0;
+    }}
+    .download-btn {{
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
     }}
     @media print {{
       body {{ background: #fff; padding: 0; }}
       .print-bar {{ display: none; }}
+      .test-btn {{ display: none; }}
       .sheet-grid {{ max-width: 100%; gap: 10px; }}
-      .qr-card {{ border: 1px solid #94a3b8; page-break-inside: avoid; }}
+      .qr-card {{ border: 1.5px solid #000; page-break-inside: avoid; box-shadow: none; }}
     }}
   </style>
 </head>
 <body>
   <div class="print-bar">
     <div>
-      <h2 style="margin: 0; font-size: 16px;">Physical Test Kit: Block A Stationary QR Markers</h2>
-      <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
-        15 stationary checkpoints across all 5 elevation levels (Ground to Floor 4).
+      <h2 style="margin: 0; font-size: 17px; font-weight: 800;">📷 Physical QR Code Testing Kit — Block A Digital Twin</h2>
+      <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+        15 camera-scannable QR checkpoints encoding direct mobile navigation links (Floors 0 to 4).
       </div>
     </div>
-    <button class="btn-print" onclick="window.print()">🖨️ Print Test Kit (A4)</button>
+    <div style="display: flex; gap: 8px;">
+      <a href="/admin" style="background: #334155; color: #fff; padding: 10px 14px; font-size: 13px; font-weight: 700; border-radius: 6px; text-decoration: none;">← Admin Portal</a>
+      <button class="btn-print" onclick="window.print()">🖨️ Print Test Kit (A4)</button>
+    </div>
   </div>
 
   <div class="sheet-grid">
@@ -224,10 +273,11 @@ def build_printable_html():
 </html>
 """
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(output_html_path, "w", encoding="utf-8") as f:
         f.write(full_html)
-    print(f"[+] Successfully generated physical QR test kit with {len(rows)} badges at: {output_path}")
+    print(f"[+] Successfully generated physical QR test kit with {len(rows)} real badges at: {output_html_path}")
 
 if __name__ == "__main__":
-    build_printable_html()
-
+    import sys
+    host = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:5000"
+    build_printable_html(host)

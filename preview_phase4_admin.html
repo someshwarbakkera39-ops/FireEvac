@@ -162,8 +162,8 @@
             <div class="lbl">Safely Evacuated</div>
           </div>
           <div class="metric-card">
-            <div class="num" id="adminOccMissing" style="color: #ef4444;">0</div>
-            <div class="lbl">Missing / Trapped</div>
+            <div class="num" id="adminOccScanned" style="color: #38bdf8;">11</div>
+            <div class="lbl">Total Scanned QR</div>
           </div>
           <div class="metric-card">
             <div class="num" id="adminActiveHazards" style="color: #fca5a5;">0</div>
@@ -172,16 +172,62 @@
         </div>
       </div>
 
-      <!-- Simulation Center (Drill Scenarios) -->
+      <!-- Simulation Center (Live Animated Drill Simulator) -->
       <div class="sidebar-section">
         <div class="section-title">
           <span>Drill Simulation Center</span>
-          <span style="font-size: 10px; color: #38bdf8; font-weight: normal;">No IoT Hardware Req.</span>
+          <span style="font-size: 10px; color: #38bdf8; font-weight: normal;">Live Digital Twin</span>
+        </div>
+
+        <!-- Live Simulation Controls -->
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <button id="btnStartDrill" class="canvas-btn" style="flex: 2; background: #16a34a; border-color: #22c55e; color: #fff; font-weight: 800; justify-content: center;">
+            ▶ Start Drill
+          </button>
+          <button id="btnPauseDrill" class="canvas-btn" style="flex: 1; justify-content: center;" title="Pause simulation">
+            ⏸ Pause
+          </button>
+          <button id="btnResetDrill" class="canvas-btn" style="flex: 1; justify-content: center;" title="Reset occupants and drill state">
+            🔄 Reset
+          </button>
+        </div>
+
+        <!-- Speed & Density Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: #94a3b8;">
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>Speed:</span>
+            <button class="sim-speed-btn active" data-speed="1" style="background: #2563eb; color: #fff; border: none; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">1x</button>
+            <button class="sim-speed-btn" data-speed="2.5" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">2.5x</button>
+            <button class="sim-speed-btn" data-speed="5" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">5x</button>
+          </div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>Crowd:</span>
+            <select id="simCrowdSelect" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; font-size: 10px; padding: 2px 4px; border-radius: 3px;">
+              <option value="12">12 Seeded</option>
+              <option value="25">25 Occupants</option>
+              <option value="40">40 Occupants</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Drill Telemetry Dashboard -->
+        <div style="background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+            <span style="color: #94a3b8;">Drill Elapsed Time:</span>
+            <strong id="simDrillTimer" style="color: #38bdf8; font-family: monospace; font-size: 12px;">00:00</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
+            <span style="color: #94a3b8;">Evacuation Flow Rate:</span>
+            <strong id="simDrillRate" style="color: #4ade80; font-family: monospace;">0.0 /min</strong>
+          </div>
+          <div style="background: #1e293b; height: 6px; border-radius: 3px; overflow: hidden;">
+            <div id="simDrillProgress" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.3s;"></div>
+          </div>
         </div>
         
         <div class="drill-card active" id="drillBaseline">
           <div style="font-size: 12px; font-weight: bold; color: #4ade80;">Drill 1: Standard Baseline Evacuation</div>
-          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Normal operations; tests shortest path from Floor 4 Auditorium to ground exits.</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Normal operations; tests shortest path from all rooms to ground exits.</div>
         </div>
 
         <div class="drill-card" id="drillGroundExitBlocked">
@@ -191,7 +237,7 @@
 
         <div class="drill-card" id="drillStairBBlocked">
           <div style="font-size: 12px; font-weight: bold; color: #fca5a5;">Drill 3: Staircase B Failure on Floor 2</div>
-          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Engulfs Staircase B on L2; tests skybridge rerouting of AI Lab to Staircase A.</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Engulfs Staircase B on L2; tests skybridge rerouting of East wing to Staircase A.</div>
         </div>
 
         <div class="drill-card" id="drillCompoundFire">
@@ -225,7 +271,7 @@
       <div class="sidebar-section">
         <div class="section-title">Printable QR Code Testing Kit</div>
         <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
-          Generate printable physical test markers calibrated for prototype testing:
+          Camera-scannable markers encoding direct mobile navigation links:
         </div>
         <select id="adminQrSelect" class="form-input" style="width: 100%; margin-bottom: 8px;">
           <option value="QR_3_AILAB">Floor 3: AI Lab 305 Checkpoint</option>
@@ -238,20 +284,20 @@
         <div id="qrCardPreview" class="qr-badge-preview">
           <h4 id="qrCardTitle">AI & Autonomous Robotics Lab 305</h4>
           <p id="qrCardSub">Block A • Floor 3 • Stationary Positioning Checkpoint</p>
-          <div id="qrSvgHolder" style="margin: 10px auto; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; background: #fff;">
-            <!-- Rendered SVG QR -->
+          <div id="qrSvgHolder" style="margin: 10px auto; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 4px; border-radius: 6px;">
+            <img id="adminQrImage" src="static/qr_codes/QR_3_AILAB.png" alt="QR Code" style="width: 130px; height: 130px; display: block;" />
           </div>
           <div style="font-size: 10px; font-weight: bold; color: #1e293b; font-family: monospace;" id="qrCardCode">
             PAYLOAD: QR_3_AILAB
           </div>
-          <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
-            Scan with smartphone camera for instant floor & node routing
+          <div style="font-size: 9px; color: #16a34a; font-weight: bold; margin-top: 2px;">
+            ⚡ Camera-scannable: Opens /public?qr=... on mobile
           </div>
         </div>
 
-        <button id="btnPrintQrBadge" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px;">
-          🖨️ Print / Export QR Badge Marker
-        </button>
+        <a href="static/qr_testkit.html" target="_blank" class="canvas-btn" style="width: 100%; justify-content: center; margin-top: 8px; background: #2563eb; color: #fff; text-decoration: none; font-weight: bold;">
+          🖨️ Open Full Printable Test Kit (15 Badges)
+        </a>
       </div>
     </aside>
   </div>

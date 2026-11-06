@@ -13,3 +13,4 @@ env/
 
 # SQLite local testing DB (preserved or committed as seed)
 *.log
+

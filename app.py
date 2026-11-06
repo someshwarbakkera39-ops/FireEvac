@@ -1,9 +1,12 @@
 import os
 import json
 import math
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+import io
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_file, Response
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
+import qrcode
+import qrcode.image.svg
 
 from database.db import get_db, close_db, query_db, execute_db, init_db
 from database.seed_data import seed_all
@@ -350,7 +353,7 @@ def toggle_path_block():
     })
 
 # ============================================================================
-# Stationary QR Localization APIs
+# Stationary QR Localization & Direct Image Generation APIs
 # ============================================================================
 
 @app.route("/api/qr", methods=["GET"])
@@ -360,13 +363,17 @@ def get_qr_codes():
         "SELECT qr.*, n.x_coord, n.y_coord, n.name as node_name, n.code as room_code "
         "FROM qr_codes qr JOIN nodes n ON qr.node_id = n.id ORDER BY qr.floor_id ASC"
     )
+    base_url = request.host_url.rstrip("/")
+    for q in qr_list:
+        q["scan_url"] = f"{base_url}/public?qr={q['code_id']}"
+        q["image_url"] = f"/api/qr/image/{q['code_id']}"
     return jsonify({"status": "success", "qr_codes": qr_list, "total": len(qr_list)})
 
 @app.route("/api/qr/<string:code_id>", methods=["GET"])
 def resolve_qr_code(code_id):
     """
     Instant zero-setup indoor positioning via scanned QR code.
-    Resolves code_id to exact node, floor, and coordinate space.
+    Resolves code_id to exact node, floor, coordinate space, and direct scan URL.
     """
     qr = query_db(
         "SELECT qr.*, n.x_coord, n.y_coord, n.name as node_name, n.code as room_code, n.type as node_type "
@@ -377,13 +384,61 @@ def resolve_qr_code(code_id):
     if not qr:
         return jsonify({"status": "error", "message": f"QR code '{code_id}' is not recognized in Block A."}), 404
 
+    base_url = request.host_url.rstrip("/")
+    scan_url = f"{base_url}/public?qr={code_id}"
+
     return jsonify({
         "status": "success",
         "qr": qr,
         "floor": qr["floor_id"],
         "node_id": qr["node_id"],
+        "scan_url": scan_url,
+        "image_url": f"/api/qr/image/{code_id}",
         "coordinates": {"x": qr["x_coord"], "y": qr["y_coord"]}
     })
+
+@app.route("/api/qr/image/<string:code_id>", methods=["GET"])
+def get_qr_image(code_id):
+    """
+    Dynamically generates and returns a genuine camera-scannable QR code image
+    encoding the public evacuation guidance direct URL.
+    Supports format=png (default) and format=svg.
+    """
+    qr_record = query_db("SELECT * FROM qr_codes WHERE code_id = ?", [code_id], one=True)
+    if not qr_record:
+        return jsonify({"status": "error", "message": f"QR checkpoint '{code_id}' not found."}), 404
+
+    base_url = request.args.get("base_url") or request.host_url.rstrip("/")
+    scan_url = f"{base_url}/public?qr={code_id}"
+    fmt = request.args.get("format", "png").lower()
+
+    if fmt == "svg":
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+            image_factory=qrcode.image.svg.SvgPathImage
+        )
+        qr.add_data(scan_url)
+        qr.make(fit=True)
+        img = qr.make_image()
+        svg_xml = img.to_string(encoding="unicode")
+        return Response(svg_xml, mimetype="image/svg+xml")
+    else:
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=3
+        )
+        qr.add_data(scan_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#0f172a", back_color="#ffffff")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
 
 @app.route("/api/qr", methods=["POST"])
 def register_qr_code():
@@ -413,9 +468,13 @@ def register_qr_code():
 
 @app.route("/api/occupancy", methods=["GET"])
 def get_occupancy_summary():
-    """Returns drill status metrics: inside count, safe exits, unaccounted occupants."""
+    """
+    Returns drill status metrics:
+    total scanned count, inside building count, safely evacuated count, floor breakdown.
+    """
     records = query_db("SELECT * FROM occupancy_sim")
     total = len(records)
+    total_scanned = sum(1 for r in records if r.get("scanned_qr"))
     inside = sum(1 for r in records if r["status"] == "inside")
     safe = sum(1 for r in records if r["status"] in ["safe", "evacuated"])
     missing = sum(1 for r in records if r["status"] == "missing")
@@ -428,6 +487,7 @@ def get_occupancy_summary():
     return jsonify({
         "status": "success",
         "metrics": {
+            "total_scanned": total_scanned,
             "total_occupants": total,
             "inside_building": inside,
             "safely_evacuated": safe,
@@ -437,36 +497,237 @@ def get_occupancy_summary():
         "records": records
     })
 
+@app.route("/api/occupancy/scan", methods=["POST"])
+def record_qr_scan():
+    """
+    Handles immediate QR checkpoint scan from physical camera or test selector.
+    Registers occupant as inside, increments total_scanned counter, and returns
+    calculated nearest safe exit route with turn-by-turn guidance.
+    """
+    data = request.get_json() or {}
+    code_id = data.get("qr_code") or data.get("code_id")
+    occupant_id = data.get("occupant_id")
+
+    if not code_id:
+        return jsonify({"status": "error", "message": "qr_code or code_id required."}), 400
+
+    qr = query_db(
+        "SELECT qr.*, n.x_coord, n.y_coord, n.name as node_name, n.code as room_code, n.type as node_type "
+        "FROM qr_codes qr JOIN nodes n ON qr.node_id = n.id WHERE qr.code_id = ?",
+        [code_id],
+        one=True
+    )
+    if not qr:
+        return jsonify({"status": "error", "message": f"QR code '{code_id}' not recognized in Block A."}), 404
+
+    if not occupant_id:
+        import uuid
+        occupant_id = f"SCAN_{uuid.uuid4().hex[:6].upper()}"
+
+    floor_id = qr["floor_id"]
+    node_id = qr["node_id"]
+
+    # Log into audit table
+    try:
+        execute_db(
+            "INSERT INTO qr_scans_log (occupant_id, code_id, floor_id, node_id) VALUES (?, ?, ?, ?)",
+            [occupant_id, code_id, floor_id, node_id]
+        )
+    except Exception:
+        pass
+
+    # Upsert occupancy_sim record
+    existing = query_db("SELECT id FROM occupancy_sim WHERE occupant_id = ?", [occupant_id], one=True)
+    if existing:
+        execute_db(
+            "UPDATE occupancy_sim SET floor_id = ?, current_node = ?, scanned_qr = ?, status = 'inside', last_ping = CURRENT_TIMESTAMP WHERE occupant_id = ?",
+            [floor_id, node_id, code_id, occupant_id]
+        )
+    else:
+        execute_db(
+            "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, scanned_qr) VALUES (?, ?, ?, 'inside', ?)",
+            [occupant_id, floor_id, node_id, code_id]
+        )
+
+    # Compute immediate dynamic evacuation route
+    db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
+    blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
+
+    blocked_nodes = []
+    db_hazards = query_db("SELECT floor_id, location_x, location_y, radius FROM hazards")
+    for h in db_hazards:
+        h_fl = h["floor_id"]
+        hx, hy = h["location_x"], h["location_y"]
+        hradius = h.get("radius") or 45.0
+        for nid, n in graph_model.nodes.items():
+            if n["floor"] == h_fl:
+                if math.hypot(n["x"] - hx, n["y"] - hy) <= hradius:
+                    blocked_nodes.append(nid)
+
+    route_res = routing_engine.calculate_evacuation_route(
+        start_node_id=node_id,
+        blocked_edges=blocked_edges,
+        blocked_nodes=blocked_nodes
+    )
+
+    # Fetch updated counts
+    all_recs = query_db("SELECT * FROM occupancy_sim")
+    total_scanned = sum(1 for r in all_recs if r.get("scanned_qr"))
+    inside_count = sum(1 for r in all_recs if r["status"] == "inside")
+    safe_count = sum(1 for r in all_recs if r["status"] in ["safe", "evacuated"])
+
+    return jsonify({
+        "status": "success",
+        "occupant_id": occupant_id,
+        "location": {
+            "code_id": qr["code_id"],
+            "label": qr["location_label"],
+            "description": qr["description"],
+            "floor": qr["floor_id"],
+            "node_id": qr["node_id"],
+            "node_name": qr["node_name"],
+            "room_code": qr["room_code"],
+            "coordinates": {"x": qr["x_coord"], "y": qr["y_coord"]}
+        },
+        "route": route_res,
+        "metrics": {
+            "total_scanned": total_scanned,
+            "inside_building": inside_count,
+            "safely_evacuated": safe_count,
+            "total_occupants": len(all_recs)
+        }
+    })
+
 @app.route("/api/occupancy/report", methods=["POST"])
 def report_occupant_status():
-    """Occupant scans QR or updates status during drill."""
+    """Occupant scans QR, advances, or confirms safe exit during drill."""
     data = request.get_json() or {}
     occupant_id = data.get("occupant_id", "ANON_OCCUPANT")
     status = data.get("status", "inside")
     current_node = data.get("current_node")
-    floor_id = data.get("floor_id", 0)
+    floor_id = data.get("floor_id")
     safe_exit = data.get("safe_exit")
+    scanned_qr = data.get("scanned_qr") or data.get("qr_code")
 
-    existing = query_db("SELECT id FROM occupancy_sim WHERE occupant_id = ?", [occupant_id], one=True)
+    existing = query_db("SELECT id, scanned_qr, current_node, floor_id FROM occupancy_sim WHERE occupant_id = ?", [occupant_id], one=True)
     if existing:
+        final_qr = scanned_qr or existing.get("scanned_qr")
+        final_node = current_node or existing.get("current_node") or "NODE_EXIT_G_MAIN"
+        final_floor = floor_id if floor_id is not None else existing.get("floor_id", 0)
         execute_db(
-            "UPDATE occupancy_sim SET status = ?, current_node = ?, floor_id = ?, safe_exit = ?, last_ping = CURRENT_TIMESTAMP WHERE occupant_id = ?",
-            [status, current_node, floor_id, safe_exit, occupant_id]
+            "UPDATE occupancy_sim SET status = ?, current_node = ?, floor_id = ?, safe_exit = ?, scanned_qr = ?, last_ping = CURRENT_TIMESTAMP WHERE occupant_id = ?",
+            [status, final_node, final_floor, safe_exit, final_qr, occupant_id]
         )
     else:
+        final_node = current_node or "NODE_EXIT_G_MAIN"
+        final_floor = floor_id if floor_id is not None else 0
         execute_db(
-            "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, safe_exit) VALUES (?, ?, ?, ?, ?)",
-            [occupant_id, floor_id, current_node, status, safe_exit]
+            "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, safe_exit, scanned_qr) VALUES (?, ?, ?, ?, ?, ?)",
+            [occupant_id, final_floor, final_node, status, safe_exit, scanned_qr]
         )
 
-    return jsonify({"status": "success", "message": f"Status for '{occupant_id}' updated to '{status}'."})
+    # Return refreshed summary metrics
+    records = query_db("SELECT * FROM occupancy_sim")
+    total_scanned = sum(1 for r in records if r.get("scanned_qr"))
+    inside = sum(1 for r in records if r["status"] == "inside")
+    safe = sum(1 for r in records if r["status"] in ["safe", "evacuated"])
+
+    return jsonify({
+        "status": "success",
+        "message": f"Status for '{occupant_id}' updated to '{status}'.",
+        "metrics": {
+            "total_scanned": total_scanned,
+            "inside_building": inside,
+            "safely_evacuated": safe,
+            "total_occupants": len(records)
+        }
+    })
 
 @app.route("/api/occupancy/reset", methods=["POST"])
 def reset_occupancy_drill():
     """Resets occupancy simulation to initial drill state."""
     execute_db("DELETE FROM occupancy_sim")
     seed_all()
-    return jsonify({"status": "success", "message": "Evacuation drill occupancy simulation reset."})
+    records = query_db("SELECT * FROM occupancy_sim")
+    total_scanned = sum(1 for r in records if r.get("scanned_qr"))
+    inside = sum(1 for r in records if r["status"] == "inside")
+    safe = sum(1 for r in records if r["status"] in ["safe", "evacuated"])
+
+    return jsonify({
+        "status": "success",
+        "message": "Evacuation drill occupancy simulation reset to initial baseline.",
+        "metrics": {
+            "total_scanned": total_scanned,
+            "inside_building": inside,
+            "safely_evacuated": safe,
+            "total_occupants": len(records)
+        }
+    })
+
+@app.route("/api/simulation/populate", methods=["POST"])
+def populate_simulation_occupants():
+    """
+    Populates simulated crowd for high-density evacuation drills.
+    Spawns occupants across upper floors (Floors 1-4) in rooms and halls.
+    """
+    data = request.get_json() or {}
+    count = int(data.get("count", 20))
+    execute_db("DELETE FROM occupancy_sim")
+
+    # Pick representative room nodes across floors 1 to 4
+    candidate_nodes = [
+        (4, "NODE_ROOM_4_06", "QR_4_AUDITORIUM"),
+        (4, "NODE_ROOM_4_01", "QR_4_BOARDROOM"),
+        (4, "N4_W_CENTER", None),
+        (4, "N4_E_CENTER", None),
+        (3, "NODE_ROOM_3_05", "QR_3_AILAB"),
+        (3, "NODE_ROOM_3_01", "QR_3_LIBRARY"),
+        (3, "NODE_ROOM_3_06", "QR_3_HPC"),
+        (3, "N3_C_CENTER", None),
+        (2, "NODE_ROOM_2_01", "QR_2_LECTURE"),
+        (2, "NODE_ROOM_2_06", "QR_2_SEMINAR"),
+        (2, "N2_W_NORTH", None),
+        (2, "N2_E_SOUTH", None),
+        (1, "NODE_ROOM_1_01", "QR_1_FACULTY"),
+        (1, "NODE_ROOM_1_06", "QR_1_CSLAB"),
+        (1, "N1_C_CENTER", "QR_1_BRIDGE"),
+        (1, "N1_W_MID_N", None),
+        (0, "NODE_ROOM_G_01", "QR_G_ADMIN"),
+        (0, "NODE_ROOM_G_06", "QR_G_CAFE"),
+        (0, "NODE_LOBBY_SOUTH", "QR_G_ATRIUM"),
+        (0, "N0_W_MID_S", None)
+    ]
+
+    new_rows = []
+    for i in range(count):
+        tmpl = candidate_nodes[i % len(candidate_nodes)]
+        occ_id = f"SIM_{i+1:03d}"
+        floor_id = tmpl[0]
+        node_id = tmpl[1]
+        qr_code = tmpl[2]
+        new_rows.append((occ_id, floor_id, node_id, "inside", qr_code))
+
+    from database.db import execute_many
+    execute_many(
+        "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, scanned_qr) VALUES (?, ?, ?, ?, ?)",
+        new_rows
+    )
+
+    records = query_db("SELECT * FROM occupancy_sim")
+    total_scanned = sum(1 for r in records if r.get("scanned_qr"))
+    inside = sum(1 for r in records if r["status"] == "inside")
+    safe = sum(1 for r in records if r["status"] in ["safe", "evacuated"])
+
+    return jsonify({
+        "status": "success",
+        "message": f"Populated {count} simulated occupants for evacuation drill.",
+        "metrics": {
+            "total_scanned": total_scanned,
+            "inside_building": inside,
+            "safely_evacuated": safe,
+            "total_occupants": len(records)
+        }
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

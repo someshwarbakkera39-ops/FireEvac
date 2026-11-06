@@ -145,6 +145,29 @@
     </button>
   </header>
 
+  <!-- Live Occupant Counting & Status Ticker Bar -->
+  <div id="pubLiveStatsBar" style="background: #1e293b; color: #cbd5e1; font-size: 11px; padding: 7px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+    <div>
+      <span style="color: #94a3b8;">Occupants:</span>
+      <strong id="pubStatInside" style="color: #fbbf24; margin-right: 8px;">5 Inside</strong>
+      <strong id="pubStatSafe" style="color: #4ade80;">7 Evacuated</strong>
+    </div>
+    <div>
+      <span style="color: #94a3b8;">QR Scans:</span>
+      <strong id="pubStatScanned" style="color: #38bdf8;">11</strong>
+    </div>
+  </div>
+
+  <!-- Safe Evacuation Confirmation Card -->
+  <div id="pubSafeConfirmationCard" style="display: none; background: #ecfdf5; border-bottom: 2px solid #10b981; padding: 10px 16px; text-align: center;">
+    <div style="font-size: 16px; font-weight: 800; color: #065f46; margin-bottom: 2px;">
+      ✅ SAFELY EVACUATED
+    </div>
+    <div style="font-size: 11px; color: #047857;">
+      Your safety confirmation has been registered at Campus Incident Command. Please remain at designated safe assembly area.
+    </div>
+  </div>
+
   <!-- Quick Action Pill Bar -->
   <nav class="action-pill-bar" aria-label="Quick positioning actions">
     <button class="action-pill active" id="btnActionQr">
@@ -465,6 +488,16 @@
         gpsHandoff.stopTracking();
       });
 
+      let insideCount = 5;
+      let safeCount = 7;
+      let scannedCount = 11;
+
+      const pubStatInside = document.getElementById("pubStatInside");
+      const pubStatSafe = document.getElementById("pubStatSafe");
+      const pubStatScanned = document.getElementById("pubStatScanned");
+      const pubSafeConfirmationCard = document.getElementById("pubSafeConfirmationCard");
+      const btnMarkEvacuated = document.getElementById("btnMarkEvacuated");
+
       document.getElementById("btnActionContacts").addEventListener("click", () => {
         document.getElementById("modalContacts").style.display = "flex";
       });
@@ -472,14 +505,39 @@
         document.getElementById("modalContacts").style.display = "none";
       });
 
-      document.getElementById("btnMarkEvacuated").addEventListener("click", () => {
-        alert("✓ Evacuation Status Recorded: You are marked as SAFELY EVACUATED.");
+      function markSafelyEvacuated() {
+        if (insideCount > 0) insideCount--;
+        safeCount++;
+        pubStatInside.textContent = `${insideCount} Inside`;
+        pubStatSafe.textContent = `${safeCount} Evacuated`;
+        pubSafeConfirmationCard.style.display = "block";
+        btnMarkEvacuated.disabled = true;
+        btnMarkEvacuated.textContent = "✓ Status Confirmed: Safely Evacuated";
+        btnMarkEvacuated.style.background = "#059669";
+        setTimeout(() => {
+          document.getElementById("modalGps").style.display = "flex";
+          gpsHandoff.startTracking();
+        }, 500);
+      }
+
+      btnMarkEvacuated.addEventListener("click", () => markSafelyEvacuated());
+      document.getElementById("btnAcknowledgeGps").addEventListener("click", () => {
+        document.getElementById("modalGps").style.display = "none";
+        gpsHandoff.stopTracking();
+        markSafelyEvacuated();
       });
 
       document.getElementById("btnRecalculatePublic").addEventListener("click", () => calculatePublicRoute());
 
-      updateFloorUI(3);
-      calculatePublicRoute();
+      // Check URL QR parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlQr = urlParams.get("qr");
+      if (urlQr) {
+        qrScanner.resolveCodeId(urlQr);
+      } else {
+        updateFloorUI(3);
+        calculatePublicRoute();
+      }
     });
   </script>
 </body>

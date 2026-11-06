@@ -121,21 +121,21 @@ def seed_all():
     occ_count = query_db("SELECT COUNT(*) as count FROM occupancy_sim", one=True)["count"]
     if occ_count == 0:
         occ_data = [
-            ("OCC_001", 4, "NODE_ROOM_4_06", "inside", None),
-            ("OCC_002", 4, "NODE_ROOM_4_01", "inside", None),
-            ("OCC_003", 3, "NODE_ROOM_3_05", "inside", None),
-            ("OCC_004", 3, "NODE_ROOM_3_01", "safe", "NODE_EXIT_G_MAIN"),
-            ("OCC_005", 3, "NODE_ROOM_3_06", "inside", None),
-            ("OCC_006", 2, "NODE_ROOM_2_01", "evacuated", "NODE_EXIT_G_WEST"),
-            ("OCC_007", 2, "NODE_ROOM_2_06", "safe", "NODE_EXIT_G_EAST"),
-            ("OCC_008", 1, "NODE_ROOM_1_06", "inside", None),
-            ("OCC_009", 1, "NODE_ROOM_1_01", "safe", "NODE_EXIT_G_MAIN"),
-            ("OCC_010", 0, "NODE_ROOM_G_06", "safe", "NODE_EXIT_G_EAST"),
-            ("OCC_011", 0, "NODE_ROOM_G_01", "safe", "NODE_EXIT_G_WEST"),
-            ("OCC_012", 2, "N2_W_CENTER", "inside", None)
+            ("OCC_001", 4, "NODE_ROOM_4_06", "inside", "QR_4_AUDITORIUM", None),
+            ("OCC_002", 4, "NODE_ROOM_4_01", "inside", "QR_4_BOARDROOM", None),
+            ("OCC_003", 3, "NODE_ROOM_3_05", "inside", "QR_3_AILAB", None),
+            ("OCC_004", 3, "NODE_ROOM_3_01", "safe", "QR_3_LIBRARY", "NODE_EXIT_G_MAIN"),
+            ("OCC_005", 3, "NODE_ROOM_3_06", "inside", "QR_3_HPC", None),
+            ("OCC_006", 2, "NODE_ROOM_2_01", "evacuated", "QR_2_LECTURE", "NODE_EXIT_G_WEST"),
+            ("OCC_007", 2, "NODE_ROOM_2_06", "safe", "QR_2_SEMINAR", "NODE_EXIT_G_EAST"),
+            ("OCC_008", 1, "NODE_ROOM_1_06", "inside", "QR_1_CSLAB", None),
+            ("OCC_009", 1, "NODE_ROOM_1_01", "safe", "QR_1_FACULTY", "NODE_EXIT_G_MAIN"),
+            ("OCC_010", 0, "NODE_ROOM_G_06", "safe", "QR_G_CAFE", "NODE_EXIT_G_EAST"),
+            ("OCC_011", 0, "NODE_ROOM_G_01", "safe", "QR_G_ADMIN", "NODE_EXIT_G_WEST"),
+            ("OCC_012", 2, "N2_W_CENTER", "inside", None, None)
         ]
         execute_many(
-            "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, safe_exit) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO occupancy_sim (occupant_id, floor_id, current_node, status, scanned_qr, safe_exit) VALUES (?, ?, ?, ?, ?, ?)",
             occ_data
         )
         print(f"[+] Seeded {len(occ_data)} occupancy tracking records.")
