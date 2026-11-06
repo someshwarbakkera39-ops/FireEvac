@@ -434,6 +434,7 @@
           const hazJson = await hazResp.json();
           if (hazJson.status === "success") {
             const hazards = hazJson.hazards || [];
+            renderer.setHazards([], [], hazards);
             if (lastHazardCount !== -1 && hazards.length !== lastHazardCount) {
               if (hazards.length > 0) {
                 pubHazardAlertBanner.style.display = "flex";

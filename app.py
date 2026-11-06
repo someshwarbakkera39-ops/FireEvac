@@ -170,21 +170,46 @@ def calculate_route():
         blocked_edges = data.get("blocked_edges")
         blocked_nodes = data.get("blocked_nodes")
 
+        def point_to_segment_dist(px, py, x1, y1, x2, y2):
+            dx = x2 - x1
+            dy = y2 - y1
+            l2 = dx * dx + dy * dy
+            if l2 == 0:
+                return math.hypot(px - x1, py - y1)
+            t = ((px - x1) * dx + (py - y1) * dy) / l2
+            t = max(0.0, min(1.0, t))
+            return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
         if blocked_edges is None:
             db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
             blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
 
         if blocked_nodes is None:
             blocked_nodes = []
-            db_hazards = query_db("SELECT floor_id, location_x, location_y, radius FROM hazards")
-            for h in db_hazards:
-                h_fl = h["floor_id"]
-                hx, hy = h["location_x"], h["location_y"]
-                hradius = h.get("radius") or 45.0
-                for nid, n in graph_model.nodes.items():
-                    if n["floor"] == h_fl:
-                        if math.hypot(n["x"] - hx, n["y"] - hy) <= hradius:
+
+        # Intersect database hazards against both nodes and corridor edges
+        db_hazards = query_db("SELECT floor_id, location_x, location_y, radius FROM hazards")
+        for h in db_hazards:
+            h_fl = h["floor_id"]
+            hx, hy = float(h["location_x"]), float(h["location_y"])
+            hradius = float(h.get("radius") or 45.0)
+
+            # Block compromised nodes
+            for nid, n in graph_model.nodes.items():
+                if n["floor"] == h_fl:
+                    if math.hypot(n["x"] - hx, n["y"] - hy) <= (hradius + 15):
+                        if nid not in blocked_nodes:
                             blocked_nodes.append(nid)
+
+            # Block compromised corridor edges
+            for edge in graph_model.edges:
+                u = graph_model.nodes.get(edge["from"])
+                v = graph_model.nodes.get(edge["to"])
+                if u and v and u["floor"] == h_fl and v["floor"] == h_fl:
+                    if point_to_segment_dist(hx, hy, u["x"], u["y"], v["x"], v["y"]) <= (hradius + 20):
+                        pair = [edge["from"], edge["to"]]
+                        if pair not in blocked_edges:
+                            blocked_edges.append(pair)
 
         if target_exit and isinstance(target_exit, str):
             target_exit = [target_exit]

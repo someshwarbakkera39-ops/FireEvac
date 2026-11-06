@@ -468,25 +468,67 @@
         }
       }
 
+      function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const l2 = dx * dx + dy * dy;
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+      }
+
       // Synchronize internal hazard state and render visual markers
       function syncHazardsState() {
         adminActiveHazards.textContent = activeHazards.length;
         blockedNodes.clear();
 
-        activeHazards.forEach(h => {
-          if (graphData && graphData.nodes) {
-            const hx = parseFloat(h.location_x);
-            const hy = parseFloat(h.location_y);
-            const hFloor = parseInt(h.floor_id, 10);
-            const hRadius = parseFloat(h.radius) || 45;
+        // Restore manual node toggles from sidebar
+        document.querySelectorAll(".node-chk:checked").forEach(chk => {
+          blockedNodes.add(chk.getAttribute("data-node"));
+        });
 
-            for (const nid in graphData.nodes) {
-              const n = graphData.nodes[nid];
-              if (parseInt(n.floor, 10) === hFloor) {
-                if (Math.hypot(n.x - hx, n.y - hy) <= hRadius) {
-                  blockedNodes.add(nid);
+        // Restore manual corridor toggles from sidebar
+        blockedEdges.clear();
+        document.querySelectorAll(".corridor-chk:checked").forEach(chk => {
+          const u = chk.getAttribute("data-u");
+          const v = chk.getAttribute("data-v");
+          blockedEdges.add(`${u}--${v}`);
+          blockedEdges.add(`${v}--${u}`);
+        });
+
+        // Intersect all active hazards with nodes AND corridor path edges
+        activeHazards.forEach(h => {
+          const hx = parseFloat(h.location_x);
+          const hy = parseFloat(h.location_y);
+          const hFloor = parseInt(h.floor_id, 10);
+          const hRadius = (parseFloat(h.radius) || 45) + 15;
+
+          if (graphData) {
+            // Block compromised nodes within hazard zone
+            if (graphData.nodes) {
+              for (const nid in graphData.nodes) {
+                const n = graphData.nodes[nid];
+                if (parseInt(n.floor, 10) === hFloor) {
+                  if (Math.hypot(n.x - hx, n.y - hy) <= hRadius) {
+                    blockedNodes.add(nid);
+                  }
                 }
               }
+            }
+
+            // Block compromised corridor edge segments passing through fire/smoke/barricade
+            if (graphData.edges) {
+              graphData.edges.forEach(e => {
+                const u = graphData.nodes[e.from];
+                const v = graphData.nodes[e.to];
+                if (u && v && parseInt(u.floor, 10) === hFloor && parseInt(v.floor, 10) === hFloor) {
+                  if (distToSegment(hx, hy, u.x, u.y, v.x, v.y) <= (hRadius + 15)) {
+                    blockedEdges.add(`${e.from}--${e.to}`);
+                    blockedEdges.add(`${e.to}--${e.from}`);
+                  }
+                }
+              });
             }
           }
         });
@@ -494,7 +536,7 @@
         renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges), activeHazards);
         previewAdminRoute();
 
-        if (drillSim && drillSim.isRunning) {
+        if (drillSim) {
           drillSim.handleHazardChange(Array.from(blockedNodes), Array.from(blockedEdges));
         }
       }
@@ -756,6 +798,41 @@
             const dist = Math.hypot(dx, dy);
             const moveStep = occ.speed * dt;
 
+            // Strict Hazard Avoidance: Prevent occupants from moving onto fire, smoke, or barricades
+            let hazardEncountered = false;
+            if (activeHazards && activeHazards.length > 0) {
+              for (const h of activeHazards) {
+                if (parseInt(h.floor_id, 10) === occ.floor) {
+                  const hx = parseFloat(h.location_x);
+                  const hy = parseFloat(h.location_y);
+                  const hRadius = (parseFloat(h.radius) || 45) + 16;
+                  const curDist = Math.hypot(occ.x - hx, occ.y - hy);
+
+                  // If inside or touching hazard zone, immediately repel outward
+                  if (curDist <= hRadius) {
+                    const push = (hRadius - curDist) + 6;
+                    const ang = Math.atan2(occ.y - hy, occ.x - hx);
+                    occ.x += Math.cos(ang) * push;
+                    occ.y += Math.sin(ang) * push;
+                    this.rerouteOccupant(occ);
+                    hazardEncountered = true;
+                    break;
+                  }
+
+                  // If advancing step enters hazard perimeter, refuse forward movement and reroute
+                  const nextX = occ.x + (dx / (dist || 1)) * moveStep;
+                  const nextY = occ.y + (dy / (dist || 1)) * moveStep;
+                  if (Math.hypot(nextX - hx, nextY - hy) <= hRadius) {
+                    this.rerouteOccupant(occ);
+                    hazardEncountered = true;
+                    break;
+                  }
+                }
+              }
+            }
+
+            if (hazardEncountered) continue;
+
             if (dist <= moveStep) {
               occ.x = targetNode.x;
               occ.y = targetNode.y;
@@ -775,38 +852,78 @@
           this.updateUiMetrics();
         }
 
+        rerouteOccupant(occ) {
+          if (!graphData || !clientDijkstra) return;
+          const bSet = blockedNodes;
+
+          // Find the closest safe node on the same floor outside all hazard zones
+          let bestSafeNode = null;
+          let minD = Infinity;
+
+          for (const nid in graphData.nodes) {
+            const n = graphData.nodes[nid];
+            if (parseInt(n.floor, 10) === occ.floor && !bSet.has(nid)) {
+              // Ensure node is outside all active hazards
+              const isCompromised = activeHazards.some(h => 
+                parseInt(h.floor_id, 10) === occ.floor &&
+                Math.hypot(n.x - parseFloat(h.location_x), n.y - parseFloat(h.location_y)) <= ((parseFloat(h.radius) || 45) + 15)
+              );
+
+              if (!isCompromised) {
+                const d = Math.hypot(n.x - occ.x, n.y - occ.y);
+                if (d < minD) {
+                  minD = d;
+                  bestSafeNode = nid;
+                }
+              }
+            }
+          }
+
+          if (bestSafeNode) {
+            const newRoute = clientDijkstra.calculateRoute(bestSafeNode, {
+              blockedNodes: Array.from(blockedNodes),
+              blockedEdges: Array.from(blockedEdges)
+            });
+            if (newRoute && newRoute.success && newRoute.path.length > 0) {
+              occ.path = newRoute.path;
+              occ.pathIndex = 0;
+              occ.targetExit = newRoute.target_exit_id;
+              occ.isRerouting = true;
+              setTimeout(() => { occ.isRerouting = false; }, 2000);
+            }
+          }
+        }
+
         handleHazardChange(bNodes, bEdges) {
           const bSet = new Set(bNodes);
+          const bEdgeSet = new Set(bEdges);
+
           for (const occ of this.occupants) {
             if (occ.status !== "inside") continue;
 
             const remaining = occ.path.slice(occ.pathIndex);
-            if (remaining.some(nid => bSet.has(nid))) {
-              let closestNodeId = null;
-              let minD = Infinity;
-              for (const nid in graphData.nodes) {
-                const n = graphData.nodes[nid];
-                if (n.floor === occ.floor && !bSet.has(nid)) {
-                  const d = Math.hypot(n.x - occ.x, n.y - occ.y);
-                  if (d < minD) {
-                    minD = d;
-                    closestNodeId = nid;
-                  }
-                }
-              }
+            // Check if any remaining waypoint node is compromised
+            const hasBlockedNode = remaining.some(nid => bSet.has(nid));
 
-              if (closestNodeId && clientDijkstra) {
-                const newRoute = clientDijkstra.calculateRoute(closestNodeId, {
-                  blockedNodes: bNodes,
-                  blockedEdges: bEdges
-                });
-                if (newRoute && newRoute.success && newRoute.path.length > 0) {
-                  occ.path = newRoute.path;
-                  occ.pathIndex = 0;
-                  occ.isRerouting = true;
-                  setTimeout(() => { occ.isRerouting = false; }, 2500);
-                }
+            // Check if any remaining path segment is blocked by corridor edge barricade/fire
+            let hasBlockedEdge = false;
+            for (let i = occ.pathIndex; i < occ.path.length - 1; i++) {
+              const u = occ.path[i];
+              const v = occ.path[i + 1];
+              if (bEdgeSet.has(`${u}--${v}`) || bEdgeSet.has(`${v}--${u}`)) {
+                hasBlockedEdge = true;
+                break;
               }
+            }
+
+            // Check if current position is within proximity of any active hazard on this floor
+            const nearHazard = activeHazards.some(h => 
+              parseInt(h.floor_id, 10) === occ.floor &&
+              Math.hypot(occ.x - parseFloat(h.location_x), occ.y - parseFloat(h.location_y)) <= ((parseFloat(h.radius) || 45) + 25)
+            );
+
+            if (hasBlockedNode || hasBlockedEdge || nearHazard) {
+              this.rerouteOccupant(occ);
             }
           }
         }
