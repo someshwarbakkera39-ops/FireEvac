@@ -46,6 +46,8 @@ class FloorMapRenderer {
     this.rawHazards = [];           // Array of {id, floor_id, location_x, location_y, type, radius}
     this.startNode = null;          // node_id
     this.simOccupants = [];         // Active drill occupants
+    this.isEvacuated = false;       // True when user confirms safe evacuation outside
+    this.evacuatedExitId = null;    // The exit node user exited through
     this.hasDragged = false;
     this.isMouseDown = false;
     this.downClientX = 0;
@@ -258,8 +260,19 @@ class FloorMapRenderer {
   }
 
   setRoute(pathNodeIds, startNodeId = null) {
+    this.isEvacuated = false;
     this.activePathNodes = pathNodeIds || [];
     if (startNodeId) this.startNode = startNodeId;
+    this.render();
+  }
+
+  setEvacuated(isEvacuated = true, exitId = "NODE_EXIT_G_MAIN") {
+    this.isEvacuated = isEvacuated;
+    this.evacuatedExitId = exitId;
+    if (isEvacuated) {
+      this.activePathNodes = [];
+      this.currentFloor = 0;
+    }
     this.render();
   }
 
@@ -851,25 +864,61 @@ class FloorMapRenderer {
       this.container.querySelector("#pathLayer").innerHTML = pathHtml;
     }
 
-    // 10. User Current Position Marker (Electric Blue #2563eb)
-    if (this.startNode && this.graphData && this.graphData.nodes[this.startNode]) {
-      const startN = this.graphData.nodes[this.startNode];
-      if (startN.floor === this.currentFloor) {
-        const userHtml = `
-          <g id="userBeacon" filter="url(#blueGlow)">
-            <circle cx="${startN.x}" cy="${startN.y}" r="22" fill="rgba(37, 99, 235, 0.25)" stroke="#38bdf8" stroke-width="2">
-              <animate attributeName="r" values="16;32;16" dur="2s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" repeatCount="indefinite"/>
-            </circle>
-            <circle cx="${startN.x}" cy="${startN.y}" r="9" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>
-            <rect x="${startN.x - 65}" y="${startN.y - 30}" width="130" height="22" rx="4"
-                  fill="rgba(15, 23, 42, 0.95)" stroke="#38bdf8" stroke-width="1.5"/>
-            <text x="${startN.x}" y="${startN.y - 15}" fill="#38bdf8" font-size="10" font-weight="900" text-anchor="middle">
-              YOU ARE HERE
-            </text>
-          </g>
-        `;
-        this.container.querySelector("#userMarkerLayer").innerHTML = userHtml;
+    // 10. User Current Position or Safely Evacuated Marker
+    const markerLayer = this.container.querySelector("#userMarkerLayer");
+    if (markerLayer) {
+      if (this.isEvacuated) {
+        if (this.currentFloor === 0) {
+          const isNorth = (this.evacuatedExitId === "NODE_EXIT_G_WEST" || this.evacuatedExitId === "EXIT_G_WEST");
+          const ax = 600;
+          const ay = isNorth ? 45 : 715;
+          const targetLabel = isNorth ? "ASSEMBLY POINT 2 (NORTH SPORTS GROUND)" : "ASSEMBLY POINT 1 (SOUTH LAWN)";
+
+          markerLayer.innerHTML = `
+            <g id="evacuatedBeacon" filter="url(#greenGlow)">
+              <circle cx="${ax}" cy="${ay}" r="32" fill="rgba(22, 163, 74, 0.25)" stroke="#22c55e" stroke-width="2.5">
+                <animate attributeName="r" values="22;42;22" dur="1.8s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.9;0.15;0.9" dur="1.8s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="${ax}" cy="${ay}" r="14" fill="#16a34a" stroke="#ffffff" stroke-width="3"/>
+              <text x="${ax}" y="${ay + 5}" font-size="13" text-anchor="middle">🛡️</text>
+              <rect x="${ax - 105}" y="${ay - 44}" width="210" height="28" rx="6"
+                    fill="rgba(15, 23, 42, 0.95)" stroke="#22c55e" stroke-width="2"/>
+              <text x="${ax}" y="${ay - 26}" fill="#4ade80" font-size="11" font-weight="900" text-anchor="middle">
+                ✓ YOU ARE SAFELY OUTSIDE
+              </text>
+              <rect x="${ax - 120}" y="${ay + 22}" width="240" height="20" rx="4"
+                    fill="rgba(15, 23, 42, 0.9)" stroke="#16a34a" stroke-width="1"/>
+              <text x="${ax}" y="${ay + 36}" fill="#a7f3d0" font-size="9" font-weight="700" text-anchor="middle">
+                ${targetLabel}
+              </text>
+            </g>
+          `;
+        } else {
+          markerLayer.innerHTML = "";
+        }
+      } else if (this.startNode && this.graphData && this.graphData.nodes[this.startNode]) {
+        const startN = this.graphData.nodes[this.startNode];
+        if (startN.floor === this.currentFloor) {
+          markerLayer.innerHTML = `
+            <g id="userBeacon" filter="url(#blueGlow)">
+              <circle cx="${startN.x}" cy="${startN.y}" r="22" fill="rgba(37, 99, 235, 0.25)" stroke="#38bdf8" stroke-width="2">
+                <animate attributeName="r" values="16;32;16" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="${startN.x}" cy="${startN.y}" r="9" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>
+              <rect x="${startN.x - 65}" y="${startN.y - 30}" width="130" height="22" rx="4"
+                    fill="rgba(15, 23, 42, 0.95)" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="${startN.x}" y="${startN.y - 15}" fill="#38bdf8" font-size="10" font-weight="900" text-anchor="middle">
+                YOU ARE HERE
+              </text>
+            </g>
+          `;
+        } else {
+          markerLayer.innerHTML = "";
+        }
+      } else {
+        markerLayer.innerHTML = "";
       }
     }
 
@@ -894,6 +943,7 @@ class FloorMapRenderer {
     }
 
     let html = `<g id="simOccupantsGroup" filter="url(#blueGlow)">`;
+    let safeCount = 0;
     this.simOccupants.forEach(occ => {
       if (occ.floor === this.currentFloor && occ.status === "inside") {
         const color = occ.isRerouting ? "#f59e0b" : (occ.color || "#38bdf8");
@@ -907,6 +957,19 @@ class FloorMapRenderer {
             <rect x="-24" y="-22" width="48" height="13" rx="3" fill="rgba(15, 23, 42, 0.9)" stroke="${color}" stroke-width="1"/>
             <text x="0" y="-12" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">${occ.id}</text>
             ${occ.isRerouting ? `<text x="0" y="18" fill="#f59e0b" font-size="8" font-weight="bold" text-anchor="middle">REROUTE</text>` : ''}
+          </g>
+        `;
+      } else if (this.currentFloor === 0 && (occ.status === "safe" || occ.status === "evacuated")) {
+        // Draw safely evacuated occupants at outdoor assembly lawn (clustered around x=600, y=715)
+        safeCount++;
+        const clusterOffset = (safeCount % 8) * 16 - 56;
+        const clusterRow = Math.floor(safeCount / 8) * 16;
+        const sx = 600 + clusterOffset;
+        const sy = 745 + clusterRow;
+        html += `
+          <g class="sim-occupant-safe" transform="translate(${sx}, ${sy})">
+            <circle r="5" fill="#16a34a" stroke="#ffffff" stroke-width="1"/>
+            <text x="0" y="2.5" fill="#ffffff" font-size="6" font-weight="bold" text-anchor="middle">✓</text>
           </g>
         `;
       }

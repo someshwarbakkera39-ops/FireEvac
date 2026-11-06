@@ -148,6 +148,30 @@
         <p style="font-size: 11px; color: #94a3b8;">Incident Simulation, Barricades & Drill Metrics</p>
       </div>
 
+      <!-- Emergency System Master Activation Station -->
+      <div class="sidebar-section" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)); border: 2px solid #ef4444; border-radius: 8px; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-size: 11.5px; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+            <span id="sysStatusIcon" style="font-size: 14px;">🚨</span>
+            <span>SYSTEM & QR MASTER CONTROL</span>
+          </div>
+          <span id="sysStatusBadge" style="font-size: 10px; font-weight: 800; background: #dc2626; color: #fff; padding: 2px 8px; border-radius: 9999px; letter-spacing: 0.5px;">
+            SYSTEM ACTIVE
+          </span>
+        </div>
+        <p style="font-size: 11px; color: #cbd5e1; margin-bottom: 10px; line-height: 1.4;" id="sysStatusDesc">
+          Start system to arm all 25 floor QR checkpoints and activate real-time evacuation routing across Block A.
+        </p>
+        <div style="display: flex; gap: 6px;">
+          <button id="btnStartSystemQRs" class="canvas-btn" style="flex: 2; background: #dc2626; border-color: #ef4444; color: #fff; font-weight: 800; font-size: 11px; padding: 9px; justify-content: center; box-shadow: 0 2px 10px rgba(220, 38, 38, 0.4);">
+            🚨 START SYSTEM & ACTIVATE QRs
+          </button>
+          <button id="btnStandbySystem" class="canvas-btn" style="flex: 1; background: #1e293b; border-color: #475569; color: #cbd5e1; font-weight: 700; font-size: 11px; justify-content: center;">
+            ⏸ Standby
+          </button>
+        </div>
+      </div>
+
       <!-- Live Occupancy Status Cards -->
       <div class="sidebar-section">
         <div class="section-title">Live Occupancy & Evacuation Monitor</div>
@@ -1127,15 +1151,92 @@
         updateAdminQrBadge(e.target.value);
       });
 
+      // System Emergency & QR Master Activation Handlers
+      const sysStatusBadge = document.getElementById("sysStatusBadge");
+      const sysStatusIcon = document.getElementById("sysStatusIcon");
+      const sysStatusDesc = document.getElementById("sysStatusDesc");
+      const btnStartSystemQRs = document.getElementById("btnStartSystemQRs");
+      const btnStandbySystem = document.getElementById("btnStandbySystem");
+
+      async function syncSystemStatus() {
+        try {
+          const resp = await fetch("/api/system/status");
+          const json = await resp.json();
+          if (json.status === "success" && json.system) {
+            updateSystemUI(json.system);
+          }
+        } catch (e) {}
+      }
+
+      function updateSystemUI(sys) {
+        if (sys.is_active) {
+          if (sysStatusBadge) {
+            sysStatusBadge.textContent = "SYSTEM ACTIVE";
+            sysStatusBadge.style.background = "#dc2626";
+          }
+          if (sysStatusIcon) sysStatusIcon.textContent = "🚨";
+          if (sysStatusDesc) sysStatusDesc.textContent = "Emergency system active. All 25 floor QR checkpoints armed for live routing.";
+          if (btnStartSystemQRs) {
+            btnStartSystemQRs.style.background = "#dc2626";
+            btnStartSystemQRs.style.borderColor = "#ef4444";
+          }
+        } else {
+          if (sysStatusBadge) {
+            sysStatusBadge.textContent = "STANDBY";
+            sysStatusBadge.style.background = "#0284c7";
+          }
+          if (sysStatusIcon) sysStatusIcon.textContent = "🟢";
+          if (sysStatusDesc) sysStatusDesc.textContent = "System in standby monitoring. Press button below to start evacuation system.";
+          if (btnStartSystemQRs) {
+            btnStartSystemQRs.style.background = "#b91c1c";
+            btnStartSystemQRs.style.borderColor = "#dc2626";
+          }
+        }
+      }
+
+      if (btnStartSystemQRs) {
+        btnStartSystemQRs.addEventListener("click", async () => {
+          try {
+            const resp = await fetch("/api/system/start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ emergency_type: "fire_evacuation" })
+            });
+            const json = await resp.json();
+            if (json.status === "success") {
+              updateSystemUI(json.system);
+              alarmBanner.style.display = "flex";
+              alert("🚨 EMERGENCY EVACUATION SYSTEM STARTED!\n\n• All 25 checkpoint QR codes activated across all floors.\n• Real-time public evacuation routing live.\n• Campus alert sirens triggered.");
+            }
+          } catch (e) {}
+        });
+      }
+
+      if (btnStandbySystem) {
+        btnStandbySystem.addEventListener("click", async () => {
+          try {
+            const resp = await fetch("/api/system/standby", { method: "POST" });
+            const json = await resp.json();
+            if (json.status === "success") {
+              updateSystemUI(json.system);
+              alarmBanner.style.display = "none";
+              alert("✓ System transitioned to STANDBY mode (normal operations).");
+            }
+          } catch (e) {}
+        });
+      }
+
       // Initial Sync & Simulation Setup
       await syncHazardsFromDb();
       await syncOccupancyMetrics();
+      await syncSystemStatus();
       await populateAdminQrDropdown();
       updateAdminQrBadge("QR_3_AILAB");
       await drillSim.initialize(12);
 
-      // Periodically poll occupancy metrics every 3 seconds to keep counters fresh
+      // Periodically poll occupancy metrics & system status every 3 seconds to keep counters fresh
       setInterval(syncOccupancyMetrics, 3000);
+      setInterval(syncSystemStatus, 3000);
     });
   </script>
 </body>

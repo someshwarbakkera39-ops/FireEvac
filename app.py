@@ -2,6 +2,7 @@ import os
 import json
 import math
 import io
+import time
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_file, Response
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -526,6 +527,67 @@ def commander_location():
         return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
 
     return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
+
+# ============================================================================
+# Emergency System Activation & Master QR Control APIs
+# ============================================================================
+
+_SYSTEM_STATE = {
+    "is_active": True,
+    "status": "active",
+    "emergency_type": "fire_evacuation",
+    "activated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+    "qr_codes_activated": True,
+    "message": "Block A Smart Evacuation System Active - All QRs Armed"
+}
+
+@app.route("/api/system/status", methods=["GET"])
+def get_system_status():
+    """Returns the current master emergency system state and QR activation status."""
+    return jsonify({
+        "status": "success",
+        "system": _SYSTEM_STATE
+    })
+
+@app.route("/api/system/start", methods=["POST"])
+def start_system_emergency():
+    """
+    Activates the emergency evacuation system, arms all stationary and mobile QR markers,
+    and sounds evacuation protocol alerts across the digital twin.
+    """
+    global _SYSTEM_STATE
+    data = request.get_json(silent=True) or {}
+    emergency_type = data.get("emergency_type", "fire_evacuation")
+    
+    _SYSTEM_STATE["is_active"] = True
+    _SYSTEM_STATE["status"] = "active"
+    _SYSTEM_STATE["emergency_type"] = emergency_type
+    _SYSTEM_STATE["activated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    _SYSTEM_STATE["qr_codes_activated"] = True
+    _SYSTEM_STATE["message"] = "Emergency Evacuation System Started - All 25 Checkpoint QRs Armed"
+
+    return jsonify({
+        "status": "success",
+        "message": "Emergency evacuation system successfully started. All QRs armed.",
+        "system": _SYSTEM_STATE
+    })
+
+@app.route("/api/system/standby", methods=["POST"])
+def standby_system_emergency():
+    """
+    Sets the evacuation system into standby monitoring mode (normal operations).
+    """
+    global _SYSTEM_STATE
+    _SYSTEM_STATE["is_active"] = False
+    _SYSTEM_STATE["status"] = "standby"
+    _SYSTEM_STATE["qr_codes_activated"] = False
+    _SYSTEM_STATE["message"] = "System in Standby Monitoring - Normal Building Operations"
+
+    return jsonify({
+        "status": "success",
+        "message": "System set to Standby Monitoring mode.",
+        "system": _SYSTEM_STATE
+    })
 
 # ============================================================================
 # Occupancy, SOS & Drill Simulation APIs
