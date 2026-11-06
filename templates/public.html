@@ -249,35 +249,52 @@
 
   <!-- Below-Map Indoor Positioning & Live Incident Commander QR Scanner Panel -->
   <section class="user-inline-positioning-panel" style="background: #0f172a; border-top: 2px solid #1e293b; border-bottom: 2px solid #1e293b; padding: 14px 16px; margin: 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 16px;">📷</span>
-        <span style="font-size: 13px; font-weight: 800; color: #f8fafc; letter-spacing: 0.3px;">Indoor Floor QR Scanner</span>
+        <span style="font-size: 18px;">📷</span>
+        <div>
+          <div style="font-size: 13px; font-weight: 800; color: #f8fafc; letter-spacing: 0.3px;">Indoor Live QR Scanner</div>
+          <div style="font-size: 10px; color: #94a3b8;">Aim camera at physical wall QR marker or another phone</div>
+        </div>
       </div>
-      <button id="btnToggleCameraScanner" style="background: #2563eb; color: #ffffff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; box-shadow: 0 2px 8px rgba(37,99,235,0.4);">
-        <span id="btnCameraIcon">📷</span> <span id="btnCameraText">Open Camera</span>
-      </button>
+      <div style="display: flex; gap: 6px;">
+        <button id="btnOpenRealQrModal" style="background: #0284c7; color: #ffffff; border: none; padding: 7px 11px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 6px rgba(2,132,199,0.4); transition: background 0.15s;">
+          <span>📱</span> Show QR for Another Phone
+        </button>
+        <button id="btnToggleCameraScanner" style="background: #16a34a; color: #ffffff; border: none; padding: 7px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; box-shadow: 0 2px 8px rgba(22,163,74,0.4);">
+          <span id="btnCameraIcon">📷</span> <span id="btnCameraText">Open Live Camera</span>
+        </button>
+      </div>
     </div>
 
     <!-- Live Inline Camera Box (Initially hidden, toggled via button) -->
-    <div id="inlineCameraBox" style="display: none; background: #020617; border: 1.5px solid #38bdf8; border-radius: 8px; margin-bottom: 12px; position: relative; overflow: hidden; height: 180px;">
+    <div id="inlineCameraBox" style="display: none; background: #020617; border: 2px solid #38bdf8; border-radius: 10px; margin-bottom: 12px; position: relative; overflow: hidden; height: 220px;">
       <video id="inlineCameraVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
       <div id="inlineScannerOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
         <!-- Targeting reticle -->
-        <div style="width: 130px; height: 130px; border: 2px dashed #38bdf8; border-radius: 8px; position: relative; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);">
-          <div style="position: absolute; top: 4px; left: 0; right: 0; height: 2px; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; animation: scanLine 1.6s ease-in-out infinite;"></div>
+        <div style="width: 140px; height: 140px; border: 2px dashed #38bdf8; border-radius: 10px; position: relative; box-shadow: 0 0 20px rgba(56, 189, 248, 0.45);">
+          <div style="position: absolute; top: 4px; left: 0; right: 0; height: 2.5px; background: #38bdf8; box-shadow: 0 0 10px #38bdf8; animation: scanLine 1.6s ease-in-out infinite;"></div>
         </div>
-        <div style="font-size: 10px; color: #94a3b8; margin-top: 6px; background: rgba(15,23,42,0.85); padding: 3px 8px; border-radius: 4px;">
-          Aim at physical wall QR badge
+        <div style="font-size: 10px; color: #e0f2fe; margin-top: 8px; background: rgba(15,23,42,0.9); padding: 3px 10px; border-radius: 4px; border: 1px solid #38bdf8; font-weight: 600;">
+          Scanning actively... (jsQR + BarcodeEngine)
         </div>
       </div>
+      <!-- Stop Camera overlay button -->
+      <button id="btnStopInlineCamera" style="position: absolute; top: 8px; right: 8px; background: rgba(220, 38, 38, 0.9); color: #fff; border: none; padding: 5px 9px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer;">
+        ✕ Close
+      </button>
     </div>
+
+    <!-- Hidden file input for photo/image upload fallback -->
+    <input type="file" id="qrPhotoInput" accept="image/*" capture="environment" style="display: none;" />
 
     <!-- Quick Checkpoint Chips for Active Floor -->
     <div style="margin-bottom: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-        <span style="font-size: 11px; font-weight: 700; color: #94a3b8;">Level <span id="chipsFloorNum">3</span> Checkpoints (Tap to Locate):</span>
-        <span style="font-size: 10px; color: #38bdf8; font-weight: 600;">25 Checkpoints Across Facility</span>
+        <span style="font-size: 11px; font-weight: 700; color: #94a3b8;">Floor <span id="chipsFloorNum">3</span> Checkpoints (Tap to Test):</span>
+        <button id="btnUploadQrPhoto" style="background: none; border: none; color: #38bdf8; font-size: 10.5px; font-weight: 700; cursor: pointer; text-decoration: underline;">
+          📁 Upload QR Photo
+        </button>
       </div>
       <div id="floorQrChipsContainer" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin;">
         <!-- Populated via renderFloorQrChips() -->
@@ -328,6 +345,57 @@
       </button>
     </div>
   </footer>
+
+  <!-- REAL SCANNABLE QR DISPLAY MODAL (FOR ANOTHER PHONE TO SCAN) -->
+  <div id="modalShowRealQr" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="max-width: 430px; text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 style="font-size: 15px; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+          <span>📱</span> Real Scannable Checkpoint QR
+        </h3>
+        <button id="btnCloseShowRealQr" style="background:none; border:none; font-size:18px; cursor:pointer; color:#64748b;">✕</button>
+      </div>
+      <p style="font-size: 11px; color: #64748b; margin: 0 0 12px 0;">
+        Point the camera of your <strong>second phone</strong> directly at this screen to test live positioning!
+      </p>
+
+      <!-- Selector & Next/Prev Controls -->
+      <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;">
+        <button id="btnPrevRealQr" style="padding: 7px 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #1e293b;">◀</button>
+        <select id="selectRealQrCode" class="form-input" style="flex: 1; padding: 7px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: bold; color: #0f172a; background: #fff;">
+          <!-- Dynamically populated with all 25 checkpoints -->
+        </select>
+        <button id="btnNextRealQr" style="padding: 7px 11px; font-weight: bold; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #1e293b;">▶</button>
+      </div>
+
+      <!-- Real QR Code Image Card -->
+      <div style="background: #ffffff; border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+        <div style="font-size: 10px; font-weight: 800; color: #2563eb; letter-spacing: 0.5px;" id="dispQrFacilityTag">BLOCK A DIGITAL TWIN</div>
+        <div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-top: 2px;" id="dispQrTitle">Central Atrium Portal</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 2px;" id="dispQrSub">Ground Floor Central Atrium Wall Marker (Level 0)</div>
+        
+        <div style="width: 190px; height: 190px; margin: 10px auto; background: #fff; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <img id="realQrDisplayImg" src="/api/qr/image/QR_G_ATRIUM" alt="Real QR Code" style="width: 100%; height: 100%; object-fit: contain;" />
+        </div>
+
+        <div style="font-size: 11px; font-family: monospace; font-weight: bold; color: #0f172a; background: #f8fafc; padding: 4px 10px; border-radius: 4px; border: 1px solid #e2e8f0;" id="dispQrPayload">
+          PAYLOAD: QR_G_ATRIUM
+        </div>
+        <div style="font-size: 10px; color: #16a34a; font-weight: 700; margin-top: 6px;">
+          ⚡ Live Camera Compatible (iOS Safari, Android Chrome, Native Camera)
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button id="btnSetMyLocToDisplayed" style="flex: 1; background: #2563eb; color: #fff; padding: 9px; border-radius: 6px; font-size: 11px; font-weight: 800; border: none; cursor: pointer;">
+          📍 Test As My Location
+        </button>
+        <a id="btnDownloadRealQr" href="/api/qr/image/QR_G_ATRIUM" download="QR_G_ATRIUM.png" style="flex: 1; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; padding: 9px; border-radius: 6px; font-size: 11px; font-weight: 800; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px;">
+          ⬇️ Save Image
+        </a>
+      </div>
+    </div>
+  </div>
 
   <!-- QR SCANNER MODAL -->
   <div id="modalQrScanner" class="modal-overlay" style="display: none;">
@@ -445,6 +513,7 @@
   <script src="/static/js/floor_plans.js"></script>
   <script src="/static/js/map_renderer.js"></script>
   <script src="/static/js/dijkstra.js"></script>
+  <script src="/static/js/jsqr.min.js"></script>
   <script src="/static/js/qr_scanner.js"></script>
   <script src="/static/js/gps_handoff.js"></script>
   <script>
@@ -657,25 +726,113 @@
             renderer.setQrCodes(allQrCodes);
 
             const sel = document.getElementById("modalQrSelect");
-            if (sel) {
-              sel.innerHTML = "";
-              allQrCodes.forEach(q => {
-                const opt = document.createElement("option");
-                opt.value = q.code_id;
-                opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
-                sel.appendChild(opt);
-              });
-            }
+            const realSel = document.getElementById("selectRealQrCode");
+            if (sel) sel.innerHTML = "";
+            if (realSel) realSel.innerHTML = "";
+
+            allQrCodes.forEach(q => {
+              const opt = document.createElement("option");
+              opt.value = q.code_id;
+              opt.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
+              if (sel) sel.appendChild(opt);
+
+              if (realSel) {
+                const opt2 = document.createElement("option");
+                opt2.value = q.code_id;
+                opt2.textContent = `Floor ${q.floor_id}: ${q.location_label} (${q.code_id})`;
+                realSel.appendChild(opt2);
+              }
+            });
 
             renderFloorQrChips(currentFloor);
+            if (allQrCodes.length > 0) {
+              updateRealQrDisplay(allQrCodes[0].code_id);
+            }
           }
         } catch (e) {}
       }
 
-      // Hook Click on Map QR Badges
-      renderer.onQrClick = async (qr) => {
-        await registerAndResolveQr(qr.code_id);
-      };
+      // Display Real QR Badge Modal Controls (For Another Phone to Scan)
+      const modalShowRealQr = document.getElementById("modalShowRealQr");
+      const btnOpenRealQrModal = document.getElementById("btnOpenRealQrModal");
+      const btnCloseShowRealQr = document.getElementById("btnCloseShowRealQr");
+      const selectRealQrCode = document.getElementById("selectRealQrCode");
+      const realQrDisplayImg = document.getElementById("realQrDisplayImg");
+      const dispQrTitle = document.getElementById("dispQrTitle");
+      const dispQrSub = document.getElementById("dispQrSub");
+      const dispQrPayload = document.getElementById("dispQrPayload");
+      const btnDownloadRealQr = document.getElementById("btnDownloadRealQr");
+      const btnSetMyLocToDisplayed = document.getElementById("btnSetMyLocToDisplayed");
+      const btnPrevRealQr = document.getElementById("btnPrevRealQr");
+      const btnNextRealQr = document.getElementById("btnNextRealQr");
+
+      function updateRealQrDisplay(codeId) {
+        if (!codeId) return;
+        const qObj = allQrCodes.find(q => q.code_id === codeId);
+        if (dispQrPayload) dispQrPayload.textContent = `PAYLOAD: ${codeId}`;
+        if (realQrDisplayImg) realQrDisplayImg.src = `/api/qr/image/${codeId}?t=${Date.now()}`;
+        if (btnDownloadRealQr) {
+          btnDownloadRealQr.href = `/api/qr/image/${codeId}`;
+          btnDownloadRealQr.download = `${codeId}.png`;
+        }
+        if (qObj) {
+          if (dispQrTitle) dispQrTitle.textContent = qObj.location_label;
+          if (dispQrSub) dispQrSub.textContent = `${qObj.description || 'Stationary wall marker'} (Level ${qObj.floor_id})`;
+        }
+        if (selectRealQrCode && selectRealQrCode.value !== codeId) {
+          selectRealQrCode.value = codeId;
+        }
+      }
+
+      if (btnOpenRealQrModal) {
+        btnOpenRealQrModal.addEventListener("click", () => {
+          modalShowRealQr.style.display = "flex";
+          // Match current floor or start location
+          const matching = allQrCodes.find(q => q.node_id === startNodeId) || allQrCodes.find(q => parseInt(q.floor_id,10) === currentFloor);
+          if (matching) {
+            updateRealQrDisplay(matching.code_id);
+          } else if (allQrCodes.length > 0) {
+            updateRealQrDisplay(allQrCodes[0].code_id);
+          }
+        });
+      }
+
+      if (btnCloseShowRealQr) {
+        btnCloseShowRealQr.addEventListener("click", () => {
+          modalShowRealQr.style.display = "none";
+        });
+      }
+
+      if (selectRealQrCode) {
+        selectRealQrCode.addEventListener("change", (e) => {
+          updateRealQrDisplay(e.target.value);
+        });
+      }
+
+      if (btnPrevRealQr) {
+        btnPrevRealQr.addEventListener("click", () => {
+          if (allQrCodes.length === 0) return;
+          const curIdx = allQrCodes.findIndex(q => q.code_id === selectRealQrCode.value);
+          const prevIdx = (curIdx - 1 + allQrCodes.length) % allQrCodes.length;
+          updateRealQrDisplay(allQrCodes[prevIdx].code_id);
+        });
+      }
+
+      if (btnNextRealQr) {
+        btnNextRealQr.addEventListener("click", () => {
+          if (allQrCodes.length === 0) return;
+          const curIdx = allQrCodes.findIndex(q => q.code_id === selectRealQrCode.value);
+          const nextIdx = (curIdx + 1) % allQrCodes.length;
+          updateRealQrDisplay(allQrCodes[nextIdx].code_id);
+        });
+      }
+
+      if (btnSetMyLocToDisplayed) {
+        btnSetMyLocToDisplayed.addEventListener("click", async () => {
+          modalShowRealQr.style.display = "none";
+          await registerAndResolveQr(selectRealQrCode.value);
+        });
+      }
 
       // Inline Camera Scanner Controls
       let isInlineCameraActive = false;
@@ -683,42 +840,86 @@
       const btnCameraText = document.getElementById("btnCameraText");
       const btnCameraIcon = document.getElementById("btnCameraIcon");
       const btnToggleCameraScanner = document.getElementById("btnToggleCameraScanner");
+      const btnStopInlineCamera = document.getElementById("btnStopInlineCamera");
+
+      function stopInlineCameraFeed() {
+        isInlineCameraActive = false;
+        if (inlineBox) inlineBox.style.display = "none";
+        if (btnCameraText) btnCameraText.textContent = "Open Live Camera";
+        if (btnCameraIcon) btnCameraIcon.textContent = "📷";
+        if (btnToggleCameraScanner) btnToggleCameraScanner.style.background = "#16a34a";
+        qrScanner.stopCamera();
+      }
+
+      if (btnStopInlineCamera) {
+        btnStopInlineCamera.addEventListener("click", stopInlineCameraFeed);
+      }
 
       if (btnToggleCameraScanner) {
         btnToggleCameraScanner.addEventListener("click", async () => {
           if (!isInlineCameraActive) {
             inlineBox.style.display = "block";
-            btnCameraText.textContent = "Close Camera";
+            btnCameraText.textContent = "Stop Camera";
             btnCameraIcon.textContent = "✕";
             btnToggleCameraScanner.style.background = "#dc2626";
             isInlineCameraActive = true;
 
             const ok = await qrScanner.startCamera("inlineCameraVideo", async (scannedCode) => {
-              isInlineCameraActive = false;
-              inlineBox.style.display = "none";
-              btnCameraText.textContent = "Open Camera";
-              btnCameraIcon.textContent = "📷";
-              btnToggleCameraScanner.style.background = "#2563eb";
-              qrScanner.stopCamera();
+              stopInlineCameraFeed();
               await registerAndResolveQr(scannedCode);
             });
 
             if (!ok) {
-              alert("Camera access was not granted or is unavailable on this device.\nYou can click any of the 5 quick checkpoint badges below to simulate instant scanning!");
-              inlineBox.style.display = "none";
-              btnCameraText.textContent = "Open Camera";
-              btnCameraIcon.textContent = "📷";
-              btnToggleCameraScanner.style.background = "#2563eb";
-              isInlineCameraActive = false;
+              alert("Camera access was not granted or is unavailable on this device.\nYou can upload a photo of the QR code or tap any of the 5 quick checkpoint badges below!");
+              stopInlineCameraFeed();
             }
           } else {
-            isInlineCameraActive = false;
-            inlineBox.style.display = "none";
-            btnCameraText.textContent = "Open Camera";
-            btnCameraIcon.textContent = "📷";
-            btnToggleCameraScanner.style.background = "#2563eb";
-            qrScanner.stopCamera();
+            stopInlineCameraFeed();
           }
+        });
+      }
+
+      // Upload QR Image File Fallback (Native Camera Snapshot / Gallery)
+      const btnUploadQrPhoto = document.getElementById("btnUploadQrPhoto");
+      const qrPhotoInput = document.getElementById("qrPhotoInput");
+      if (btnUploadQrPhoto && qrPhotoInput) {
+        btnUploadQrPhoto.addEventListener("click", () => qrPhotoInput.click());
+        qrPhotoInput.addEventListener("change", async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = async () => {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0);
+
+              let foundCode = null;
+              if (window.jsQR) {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const qrRes = window.jsQR(imgData.data, canvas.width, canvas.height);
+                if (qrRes && qrRes.data) {
+                  foundCode = qrRes.data;
+                }
+              }
+
+              if (foundCode) {
+                let clean = foundCode;
+                if (clean.includes("?qr=")) clean = clean.split("?qr=")[1].split("&")[0];
+                else if (clean.includes("/qr/")) clean = clean.split("/qr/")[1].split("?")[0];
+                await registerAndResolveQr(clean);
+                alert(`✓ QR Code Decoded Successfully: ${clean}`);
+              } else {
+                alert("Could not detect a valid QR barcode in the uploaded image. Please ensure the QR code is clearly visible, or tap a checkpoint chip below.");
+              }
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
         });
       }
 

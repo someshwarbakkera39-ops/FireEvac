@@ -11,6 +11,8 @@ class QRPositioningScanner {
     this.isScanning = false;
     this.animFrameId = null;
     this.barcodeDetector = null;
+    this.canvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+    this.canvasContext = this.canvas ? this.canvas.getContext("2d", { willReadFrequently: true }) : null;
 
     if (typeof window !== "undefined" && "BarcodeDetector" in window) {
       try {
@@ -125,39 +127,85 @@ class QRPositioningScanner {
     return false;
   }
 
+  _extractCode(rawVal) {
+    if (!rawVal) return "";
+    let code = String(rawVal).trim();
+    if (code.includes("?qr=")) {
+      code = code.split("?qr=")[1].split("&")[0];
+    } else if (code.includes("/qr/")) {
+      code = code.split("/qr/")[1].split("?")[0];
+    }
+    return code;
+  }
+
+  _handleSuccessfulScan(code, onScanSuccess) {
+    if (navigator.vibrate) {
+      try { navigator.vibrate([100, 50, 100]); } catch (e) {}
+    }
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.18);
+    } catch (e) {}
+
+    this.stopCamera();
+    if (onScanSuccess) {
+      onScanSuccess(code);
+    } else {
+      this.resolveCodeId(code);
+    }
+  }
+
   _startScanLoop(onScanSuccess) {
     if (!this.isScanning || !this.videoElement) return;
 
     const checkFrame = async () => {
-      if (!this.isScanning) return;
+      if (!this.isScanning || !this.videoElement) return;
 
+      // 1. Try native BarcodeDetector if supported
       if (this.barcodeDetector && this.videoElement.readyState >= 2) {
         try {
           const barcodes = await this.barcodeDetector.detect(this.videoElement);
           if (barcodes && barcodes.length > 0) {
             const rawVal = barcodes[0].rawValue;
-            let code = rawVal;
-            if (rawVal.includes("?qr=")) {
-              code = rawVal.split("?qr=")[1].split("&")[0];
-            } else if (rawVal.includes("/qr/")) {
-              code = rawVal.split("/qr/")[1].split("?")[0];
-            }
-
-            if (navigator.vibrate) {
-              navigator.vibrate([100, 50, 100]);
-            }
-
-            this.stopCamera();
-            if (onScanSuccess) {
-              onScanSuccess(code);
-            } else {
-              this.resolveCodeId(code);
-            }
+            const code = this._extractCode(rawVal);
+            this._handleSuccessfulScan(code, onScanSuccess);
             return;
           }
-        } catch (e) {
-          // Frame dropped or not decoded
-        }
+        } catch (e) {}
+      }
+
+      // 2. High-performance jsQR fallback (iOS Safari, Firefox, Chrome, Desktop webcams)
+      if (typeof window !== "undefined" && window.jsQR && this.videoElement.readyState >= 2 && this.canvasContext) {
+        try {
+          const vw = this.videoElement.videoWidth || 640;
+          const vh = this.videoElement.videoHeight || 480;
+          if (vw > 0 && vh > 0) {
+            const scale = Math.min(1, 640 / Math.max(vw, vh));
+            const cw = Math.floor(vw * scale);
+            const ch = Math.floor(vh * scale);
+            if (this.canvas.width !== cw) this.canvas.width = cw;
+            if (this.canvas.height !== ch) this.canvas.height = ch;
+            this.canvasContext.drawImage(this.videoElement, 0, 0, cw, ch);
+            const imgData = this.canvasContext.getImageData(0, 0, cw, ch);
+            const qrCode = window.jsQR(imgData.data, cw, ch, {
+              inversionAttempts: "dontInvert"
+            });
+            if (qrCode && qrCode.data) {
+              const code = this._extractCode(qrCode.data);
+              this._handleSuccessfulScan(code, onScanSuccess);
+              return;
+            }
+          }
+        } catch (e) {}
       }
 
       if (this.isScanning) {
