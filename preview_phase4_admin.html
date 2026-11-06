@@ -539,6 +539,281 @@
         });
       });
 
+      // Elements for Occupancy & Simulation
+      const adminOccInside = document.getElementById("adminOccInside");
+      const adminOccSafe = document.getElementById("adminOccSafe");
+      const adminOccScanned = document.getElementById("adminOccScanned");
+      const simDrillTimer = document.getElementById("simDrillTimer");
+      const simDrillRate = document.getElementById("simDrillRate");
+      const simDrillProgress = document.getElementById("simDrillProgress");
+      const btnStartDrill = document.getElementById("btnStartDrill");
+      const btnPauseDrill = document.getElementById("btnPauseDrill");
+      const btnResetDrill = document.getElementById("btnResetDrill");
+      const simCrowdSelect = document.getElementById("simCrowdSelect");
+      const speedButtons = document.querySelectorAll(".sim-speed-btn");
+
+      // Standalone Offline Drill Simulation Controller
+      class StandaloneDrillSim {
+        constructor() {
+          this.isRunning = false;
+          this.speedMultiplier = 1;
+          this.timerSeconds = 0;
+          this.timerInterval = null;
+          this.animFrameId = null;
+          this.occupants = [];
+          this.totalOccupants = 0;
+          this.evacuatedCount = 0;
+          this.lastTickTime = performance.now();
+        }
+
+        initialize(crowdSize = 12) {
+          this.stop();
+          this.timerSeconds = 0;
+          this.evacuatedCount = 0;
+          simDrillTimer.textContent = "00:00";
+          simDrillRate.textContent = "0.0 /min";
+          simDrillProgress.style.width = "0%";
+
+          const roomNodes = [
+            { id: "OCC_001", node: "NODE_ROOM_4_06", floor: 4, qr: "QR_4_AUDITORIUM" },
+            { id: "OCC_002", node: "NODE_ROOM_4_01", floor: 4, qr: "QR_4_BOARDROOM" },
+            { id: "OCC_003", node: "NODE_ROOM_3_05", floor: 3, qr: "QR_3_AILAB" },
+            { id: "OCC_004", node: "NODE_ROOM_3_01", floor: 3, qr: "QR_3_LIBRARY" },
+            { id: "OCC_005", node: "NODE_ROOM_3_06", floor: 3, qr: "QR_3_HPC" },
+            { id: "OCC_006", node: "NODE_ROOM_2_01", floor: 2, qr: "QR_2_LECTURE" },
+            { id: "OCC_007", node: "NODE_ROOM_2_06", floor: 2, qr: "QR_2_SEMINAR" },
+            { id: "OCC_008", node: "NODE_ROOM_1_06", floor: 1, qr: "QR_1_CSLAB" },
+            { id: "OCC_009", node: "NODE_ROOM_1_01", floor: 1, qr: "QR_1_FACULTY" },
+            { id: "OCC_010", node: "NODE_ROOM_G_06", floor: 0, qr: "QR_G_CAFE" },
+            { id: "OCC_011", node: "NODE_ROOM_G_01", floor: 0, qr: "QR_G_ADMIN" },
+            { id: "OCC_012", node: "N2_W_CENTER", floor: 2, qr: null }
+          ];
+
+          this.occupants = [];
+          for (let i = 0; i < crowdSize; i++) {
+            const tmpl = roomNodes[i % roomNodes.length];
+            const startNode = graphData.nodes[tmpl.node];
+            if (!startNode) continue;
+
+            const route = clientDijkstra.calculateRoute(tmpl.node, {
+              blockedNodes: Array.from(blockedNodes),
+              blockedEdges: Array.from(blockedEdges)
+            });
+
+            if (route && route.success && route.path.length > 0) {
+              this.occupants.push({
+                id: i < roomNodes.length ? tmpl.id : `OCC_${i+1:03d}`,
+                scanned_qr: tmpl.qr,
+                floor: startNode.floor,
+                x: startNode.x,
+                y: startNode.y,
+                status: "inside",
+                path: route.path,
+                pathIndex: 0,
+                targetExit: route.targetExitId,
+                speed: 70 + Math.random() * 25,
+                stairDelay: 0,
+                isRerouting: false
+              });
+            }
+          }
+
+          this.totalOccupants = this.occupants.length;
+          this.evacuatedCount = 0;
+          renderer.setSimulationOccupants(this.occupants);
+          this.updateUiMetrics();
+        }
+
+        start() {
+          if (this.isRunning) return;
+          if (this.occupants.length === 0) {
+            this.initialize(parseInt(simCrowdSelect.value, 10));
+          }
+
+          this.isRunning = true;
+          this.lastTickTime = performance.now();
+          btnStartDrill.style.background = "#eab308";
+          btnStartDrill.textContent = "▶ Running Drill...";
+
+          this.timerInterval = setInterval(() => {
+            this.timerSeconds += 1;
+            this.updateUiMetrics();
+          }, 1000);
+
+          const loop = (now) => {
+            if (!this.isRunning) return;
+            const dt = Math.min((now - this.lastTickTime) / 1000, 0.1);
+            this.lastTickTime = now;
+
+            this.step(dt * this.speedMultiplier);
+            renderer.renderSimulationLayer();
+
+            const remaining = this.occupants.filter(o => o.status === "inside").length;
+            if (remaining === 0 && this.totalOccupants > 0) {
+              this.stop();
+              btnStartDrill.style.background = "#16a34a";
+              btnStartDrill.textContent = "▶ Start Drill";
+              alert(`🎉 Evacuation Drill Completed!\nAll ${this.totalOccupants} occupants evacuated safely in ${this.formatTime(this.timerSeconds)}.`);
+              return;
+            }
+
+            this.animFrameId = requestAnimationFrame(loop);
+          };
+
+          this.animFrameId = requestAnimationFrame(loop);
+        }
+
+        pause() {
+          this.isRunning = false;
+          clearInterval(this.timerInterval);
+          if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+          btnStartDrill.style.background = "#16a34a";
+          btnStartDrill.textContent = "▶ Resume Drill";
+        }
+
+        stop() {
+          this.isRunning = false;
+          clearInterval(this.timerInterval);
+          if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+          btnStartDrill.style.background = "#16a34a";
+          btnStartDrill.textContent = "▶ Start Drill";
+        }
+
+        step(dt) {
+          for (const occ of this.occupants) {
+            if (occ.status !== "inside") continue;
+
+            if (occ.stairDelay > 0) {
+              occ.stairDelay -= dt;
+              continue;
+            }
+
+            const targetNodeId = occ.path[occ.pathIndex];
+            const targetNode = graphData.nodes[targetNodeId];
+
+            if (!targetNode) {
+              occ.status = "safe";
+              this.evacuatedCount++;
+              continue;
+            }
+
+            if (targetNode.floor !== occ.floor) {
+              occ.floor = targetNode.floor;
+              occ.x = targetNode.x;
+              occ.y = targetNode.y;
+              occ.stairDelay = 0.5 / this.speedMultiplier;
+              occ.pathIndex++;
+              continue;
+            }
+
+            const dx = targetNode.x - occ.x;
+            const dy = targetNode.y - occ.y;
+            const dist = Math.hypot(dx, dy);
+            const moveStep = occ.speed * dt;
+
+            if (dist <= moveStep) {
+              occ.x = targetNode.x;
+              occ.y = targetNode.y;
+              occ.pathIndex++;
+
+              if (targetNode.type === "exit" || occ.pathIndex >= occ.path.length) {
+                occ.status = "safe";
+                this.evacuatedCount++;
+              }
+            } else {
+              occ.x += (dx / dist) * moveStep;
+              occ.y += (dy / dist) * moveStep;
+            }
+          }
+
+          this.updateUiMetrics();
+        }
+
+        handleHazardChange(bNodes, bEdges) {
+          const bSet = new Set(bNodes);
+          for (const occ of this.occupants) {
+            if (occ.status !== "inside") continue;
+
+            const remaining = occ.path.slice(occ.pathIndex);
+            if (remaining.some(nid => bSet.has(nid))) {
+              let closestNodeId = null;
+              let minD = Infinity;
+              for (const nid in graphData.nodes) {
+                const n = graphData.nodes[nid];
+                if (n.floor === occ.floor && !bSet.has(nid)) {
+                  const d = Math.hypot(n.x - occ.x, n.y - occ.y);
+                  if (d < minD) {
+                    minD = d;
+                    closestNodeId = nid;
+                  }
+                }
+              }
+
+              if (closestNodeId) {
+                const newRoute = clientDijkstra.calculateRoute(closestNodeId, {
+                  blockedNodes: bNodes,
+                  blockedEdges: bEdges
+                });
+                if (newRoute && newRoute.success && newRoute.path.length > 0) {
+                  occ.path = newRoute.path;
+                  occ.pathIndex = 0;
+                  occ.isRerouting = true;
+                  setTimeout(() => { occ.isRerouting = false; }, 2500);
+                }
+              }
+            }
+          }
+        }
+
+        updateUiMetrics() {
+          const inside = this.occupants.filter(o => o.status === "inside").length;
+          const safe = this.evacuatedCount;
+          const total = this.totalOccupants;
+          const scanned = this.occupants.filter(o => o.scanned_qr).length;
+
+          if (adminOccInside) adminOccInside.textContent = inside;
+          if (adminOccSafe) adminOccSafe.textContent = safe;
+          if (adminOccScanned) adminOccScanned.textContent = scanned;
+
+          simDrillTimer.textContent = this.formatTime(this.timerSeconds);
+          const rate = this.timerSeconds > 0 ? ((safe / this.timerSeconds) * 60).toFixed(1) : "0.0";
+          simDrillRate.textContent = `${rate} /min`;
+
+          const progress = total > 0 ? Math.round((safe / total) * 100) : 0;
+          simDrillProgress.style.width = `${progress}%`;
+        }
+
+        formatTime(sec) {
+          const m = Math.floor(sec / 60).toString().padStart(2, "0");
+          const s = (sec % 60).toString().padStart(2, "0");
+          return `${m}:${s}`;
+        }
+      }
+
+      const drillSim = new StandaloneDrillSim();
+
+      btnStartDrill.addEventListener("click", () => drillSim.start());
+      btnPauseDrill.addEventListener("click", () => drillSim.pause());
+      btnResetDrill.addEventListener("click", () => drillSim.initialize(parseInt(simCrowdSelect.value, 10)));
+
+      speedButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          speedButtons.forEach(b => {
+            b.classList.remove("active");
+            b.style.background = "#1e293b";
+            b.style.color = "#94a3b8";
+          });
+          btn.classList.add("active");
+          btn.style.background = "#2563eb";
+          btn.style.color = "#fff";
+          drillSim.speedMultiplier = parseFloat(btn.getAttribute("data-speed"));
+        });
+      });
+
+      simCrowdSelect.addEventListener("change", () => {
+        drillSim.initialize(parseInt(simCrowdSelect.value, 10));
+      });
+
       document.getElementById("btnTriggerAlarm").addEventListener("click", () => {
         alarmBanner.style.display = "flex";
       });
@@ -553,6 +828,7 @@
         drillCards.forEach(d => d.classList.remove("active"));
         drillCards[0].classList.add("active");
         syncHazards();
+        drillSim.initialize(parseInt(simCrowdSelect.value, 10));
       });
 
       function renderQrBadge(codeId) {
@@ -569,39 +845,9 @@
         document.getElementById("qrCardSub").textContent = meta.sub;
         document.getElementById("qrCardCode").textContent = `PAYLOAD: ${codeId}`;
 
+        // Render genuine scannable QR badge PNG image
         document.getElementById("qrSvgHolder").innerHTML = `
-          <svg viewBox="0 0 100 100" width="115" height="115">
-            <rect x="5" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="9" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="13" y="13" width="12" height="12" fill="#0f172a"/>
-
-            <rect x="67" y="5" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="71" y="9" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="75" y="13" width="12" height="12" fill="#0f172a"/>
-
-            <rect x="5" y="67" width="28" height="28" fill="#0f172a" rx="4"/>
-            <rect x="9" y="71" width="20" height="20" fill="#ffffff" rx="2"/>
-            <rect x="13" y="75" width="12" height="12" fill="#0f172a"/>
-
-            <rect x="38" y="10" width="6" height="6" fill="#0f172a"/>
-            <rect x="48" y="10" width="6" height="6" fill="#0f172a"/>
-            <rect x="38" y="24" width="6" height="6" fill="#0f172a"/>
-            <rect x="56" y="24" width="6" height="6" fill="#0f172a"/>
-
-            <rect x="10" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="24" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="38" y="38" width="24" height="24" fill="#0f172a"/>
-            <rect x="42" y="42" width="16" height="16" fill="#ffffff"/>
-            <circle cx="50" cy="50" r="4" fill="#2563eb"/>
-
-            <rect x="68" y="38" width="6" height="6" fill="#0f172a"/>
-            <rect x="82" y="38" width="6" height="6" fill="#0f172a"/>
-
-            <rect x="38" y="68" width="6" height="6" fill="#0f172a"/>
-            <rect x="48" y="78" width="6" height="6" fill="#0f172a"/>
-            <rect x="68" y="68" width="6" height="6" fill="#0f172a"/>
-            <rect x="80" y="80" width="8" height="8" fill="#0f172a"/>
-          </svg>
+          <img src="static/qr_codes/${codeId}.png" alt="QR Code ${codeId}" style="width: 130px; height: 130px; display: block;" onerror="this.src='/api/qr/image/${codeId}'" />
         `;
       }
 
@@ -610,11 +856,8 @@
       });
       renderQrBadge("QR_3_AILAB");
 
-      document.getElementById("btnPrintQrBadge").addEventListener("click", () => {
-        window.print();
-      });
-
       syncHazards();
+      drillSim.initialize(12);
     });
   </script>
 </body>

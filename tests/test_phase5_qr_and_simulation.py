@@ -131,3 +131,4 @@ def test_qr_testkit_and_png_badge_assets():
     assert len(png_files) >= 15
     for pf in png_files:
         assert os.path.getsize(os.path.join(qr_codes_dir, pf)) > 200
+

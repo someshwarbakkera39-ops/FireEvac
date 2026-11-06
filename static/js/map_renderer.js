@@ -41,6 +41,7 @@ class FloorMapRenderer {
     this.blockedEdges = new Set();  // "u--v"
     this.blockedNodes = new Set();  // "node_id"
     this.startNode = null;          // node_id
+    this.simOccupants = [];         // Active drill occupants
 
     this.init();
   }
@@ -414,10 +415,12 @@ class FloorMapRenderer {
           executive: { fill: "#1e293b", border: "#ec4899", text: "#f472b6" }
         };
         const conf = typeColors[r.type] || { fill: "#1e293b", border: "#64748b", text: "#e2e8f0" };
+        const rw = (r.w !== undefined ? r.w : r.width) || 100;
+        const rh = (r.h !== undefined ? r.h : r.height) || 60;
 
         roomsHtml += `
           <g class="room-element" data-id="${r.id}" data-node="${roomNodeId}" style="cursor:pointer;">
-            <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6"
+            <rect x="${r.x}" y="${r.y}" width="${rw}" height="${rh}" rx="6"
                   fill="${isStart ? 'rgba(37, 99, 235, 0.3)' : conf.fill}"
                   stroke="${isStart ? '#38bdf8' : conf.border}"
                   stroke-width="${isStart ? 3 : 1.8}"/>
@@ -426,8 +429,8 @@ class FloorMapRenderer {
             <text x="${r.x + 33}" y="${r.y + 21}" fill="${conf.text}" font-size="10" font-weight="bold" text-anchor="middle">${r.code}</text>
             
             ${this.layers.labels ? `
-              <text x="${r.x + r.w / 2}" y="${r.y + r.h / 2 + 5}" fill="#f1f5f9"
-                    font-size="${r.w > 200 ? 13 : 11}" font-weight="600" text-anchor="middle"
+              <text x="${r.x + rw / 2}" y="${r.y + rh / 2 + 5}" fill="#f1f5f9"
+                    font-size="${rw > 200 ? 13 : 11}" font-weight="600" text-anchor="middle"
                     style="pointer-events:none;">
                 ${r.name}
               </text>

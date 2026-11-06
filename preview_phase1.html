@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Phase 1 Output | Block A 2D Architectural Digital Twin</title>
   <link rel="stylesheet" href="static/css/style.css" />
 </head>
+
 <body>
   <!-- Header Bar -->
   <header class="app-header">
@@ -67,7 +69,8 @@
         <button class="canvas-btn" id="btnZoomOut" title="Zoom Out (-)">🔍 −</button>
         <button class="canvas-btn" id="btnResetView" title="Reset View">⟲ Reset</button>
         <span style="width: 1px; background: #334155; margin: 0 4px;"></span>
-        <span id="currentFloorTag" style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; padding: 0 6px;">
+        <span id="currentFloorTag"
+          style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; padding: 0 6px;">
           GROUND FLOOR (LEVEL 0)
         </span>
       </div>
@@ -104,18 +107,22 @@
     <aside class="sidebar-panel">
       <div class="sidebar-header">
         <h2 id="floorTitle">Ground Floor (Level 0)</h2>
-        <p id="floorSubtitle">Primary egress hub, central administration, reception atrium, and primary building exits.</p>
+        <p id="floorSubtitle">Primary egress hub, central administration, reception atrium, and primary building exits.
+        </p>
       </div>
 
       <!-- Phase 1 Delivery Confirmation Banner -->
       <div class="sidebar-section">
         <div class="phase-confirm-card">
           <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
             Phase 1 Digitization Complete
           </h3>
           <p>
-            Block A architectural CAD blueprints have been analyzed and vectorized into interactive 2D coordinate graphs for all 5 elevation levels (G through 4th floor).
+            Block A architectural CAD blueprints have been analyzed and vectorized into interactive 2D coordinate graphs
+            for all 5 elevation levels (G through 4th floor).
           </p>
           <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;">
             <span class="badge-stair">Staircase A & B Aligned</span>
@@ -183,17 +190,20 @@
       <div class="sidebar-section">
         <div class="section-title">Element Inspector</div>
         <div id="inspectorEmpty" style="font-size: 12px; color: #64748b; font-style: italic; padding: 8px 0;">
-          Click on any room, stairwell, or exit on the canvas to inspect its architectural metadata and coordinate specs.
+          Click on any room, stairwell, or exit on the canvas to inspect its architectural metadata and coordinate
+          specs.
         </div>
         <div id="inspectorDetails" class="room-inspect-box" style="display: none;">
-          <div id="inspectBadge" style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase;">ROOM</div>
+          <div id="inspectBadge" style="font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase;">
+            ROOM</div>
           <div id="inspectName" style="font-size: 14px; font-weight: bold; color: #f8fafc; margin-top: 2px;"></div>
           <div id="inspectCode" style="font-size: 11px; color: #94a3b8; font-family: monospace;"></div>
           <hr style="border: 0; border-top: 1px solid #334155; margin: 8px 0;" />
           <div style="font-size: 11px; color: #cbd5e1; display: flex; flex-direction: column; gap: 4px;">
             <div><strong>Bounding Box:</strong> <span id="inspectBounds"></span></div>
             <div><strong>Access Portal (Door):</strong> <span id="inspectDoor"></span></div>
-            <div><strong>Primary Evacuation Vector:</strong> <span id="inspectEgress" style="color: #4ade80;"></span></div>
+            <div><strong>Primary Evacuation Vector:</strong> <span id="inspectEgress" style="color: #4ade80;"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -204,11 +214,13 @@
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px;">
           <div style="background: #1e293b; padding: 8px; border-radius: 6px; border-left: 3px solid #f59e0b;">
             <strong style="color: #fbbf24;">Staircase A (West Wing):</strong>
-            <p style="color: #94a3b8; margin-top: 2px;">Aligned across G, 1F, 2F, 3F, 4F at X: 120-220, Y: 130-220. Walkable connector at (275, 175).</p>
+            <p style="color: #94a3b8; margin-top: 2px;">Aligned across G, 1F, 2F, 3F, 4F at X: 120-220, Y: 130-220.
+              Walkable connector at (275, 175).</p>
           </div>
           <div style="background: #1e293b; padding: 8px; border-radius: 6px; border-left: 3px solid #f59e0b;">
             <strong style="color: #fbbf24;">Staircase B (East Wing):</strong>
-            <p style="color: #94a3b8; margin-top: 2px;">Aligned across G, 1F, 2F, 3F, 4F at X: 980-1080, Y: 130-220. Walkable connector at (925, 175).</p>
+            <p style="color: #94a3b8; margin-top: 2px;">Aligned across G, 1F, 2F, 3F, 4F at X: 980-1080, Y: 130-220.
+              Walkable connector at (925, 175).</p>
           </div>
         </div>
       </div>
@@ -283,7 +295,7 @@
         document.getElementById("inspectBadge").textContent = `${room.type.toUpperCase()} • LEVEL ${floor.level}`;
         document.getElementById("inspectName").textContent = room.name;
         document.getElementById("inspectCode").textContent = `ID: ${room.id} | CODE: ${room.code}`;
-        document.getElementById("inspectBounds").textContent = `X: ${room.x}, Y: ${room.y}, W: ${room.w}px, H: ${room.h}px`;
+        document.getElementById("inspectBounds").textContent = `X: ${room.x}, Y: ${room.y}, W: ${room.w || room.width}px, H: ${room.h || room.height}px`;
         document.getElementById("inspectDoor").textContent = `(${room.door.x}, ${room.door.y})`;
 
         // Egress calculation hint
@@ -298,5 +310,5 @@
     });
   </script>
 </body>
-</html>
 
+</html>

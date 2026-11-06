@@ -3,7 +3,13 @@ Database Seed Script: Populates Block A Digital Twin SQLite Database
 Blueprint Section 11 Implementation
 """
 
+import os
+import sys
 import json
+
+# Ensure project root is in sys.path for direct script execution
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from werkzeug.security import generate_password_hash
 from database.db import init_db, execute_db, execute_many, query_db
 from engine.graph_model import BlockAGraphModel

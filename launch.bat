@@ -8,3 +8,4 @@ echo Opening Master Demonstration Hub in your default browser...
 start "" "http://localhost:5000"
 python app.py
 pause
+
