@@ -119,30 +119,117 @@ The current system is a software-based digital twin prototype. It cannot indepen
 
 ## 11. Quick Start & Execution
 
-### Running the Local Web Server
-```powershell
+### Prerequisites
+- Python 3.10+ (tested on Python 3.12)
+- Modern web browser (Chrome, Edge, Firefox, Safari)
+
+### Local Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/<your-username>/<your-repo-name>.git
+cd <your-repo-name>
+
+# 2. Create virtual environment
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Launch local server
 python app.py
 ```
-Open your browser at:
-- **Root 2D Digital Twin Viewer**: `http://localhost:5000/`
-- **Dynamic Routing Studio**: `http://localhost:5000/routing`
-- **Admin Management Portal**: `http://localhost:5000/admin`
-- **Public Mobile SOS Client**: `http://localhost:5000/public`
-- **Relational Database Explorer**: `http://localhost:5000/backend-explorer`
-- **Printable QR Test Kit**: `http://localhost:5000/static/qr_testkit.html`
+Or double-click `launch.bat` on Windows.
 
-### Running the Complete Test Suite
-```powershell
+Open your browser at:
+- **Central Demonstration Hub**: `http://localhost:5000/`
+- **Dynamic Routing Studio**: `http://localhost:5000/routing`
+- **Admin Emergency Operations Center**: `http://localhost:5000/admin`
+- **Public Mobile SOS & QR Scanner**: `http://localhost:5000/public`
+- **Relational Database Explorer**: `http://localhost:5000/backend-explorer`
+- **Printable 15-Badge QR Test Kit**: `http://localhost:5000/static/qr_testkit.html`
+
+### Running the Complete Automated Test Suite
+```bash
 python -m pytest tests/ -v
 ```
-All **33 automated unit and scenario tests** will execute and pass.
+All **38 automated unit, scenario, and drill tests** will execute and pass.
 
 ### Standalone Zero-Setup Browser Previews
 All phases have dedicated standalone HTML files that can be opened directly without a running server:
-- `preview_phase1.html` (2D Floor Digitization)
-- `preview_phase2.html` (Dijkstra Routing & Hazards)
-- `preview_phase3.html` (SQLite Database Explorer)
-- `preview_phase4_admin.html` (Admin Portal & Simulation Center)
-- `preview_phase5_public.html` (Public Mobile SOS & QR)
-- `preview_final_system_demo.html` (Master All-In-One Demonstration)
+- `preview_phase1.html` (2D Floor Digitization & Room Inspector)
+- `preview_phase2.html` (Dijkstra Routing & Real-time Hazard Rerouting)
+- `preview_phase3.html` (SQLite Relational Database & Table Visualizer)
+- `preview_phase4_admin.html` (Admin Portal, Hazard Controls & Animated Drill Simulation)
+- `preview_phase5_public.html` (Public Mobile SOS, QR Checkpoints & Occupancy Counters)
+- `preview_final_system_demo.html` (Master Interactive All-In-One Demonstration)
+
+---
+
+## 12. Deployment Guides
+
+### A. Deploying to Vercel (Serverless)
+
+The project includes built-in Vercel configuration files:
+- `api/index.py`: Serverless WSGI entry point
+- `vercel.json`: URL rewrite and routing rules
+- `.vercelignore`: Deployment package optimization
+
+#### Step 1: Deploy via Vercel CLI
+```bash
+npm install -g vercel
+vercel
+```
+Follow the interactive prompts:
+1. "Set up and deploy?": **Yes**
+2. "Which scope?": Select your account
+3. "Link to existing project?": **No**
+4. "Project name?": accept default or customize
+5. "In which directory is your code located?": `./`
+6. "Want to modify settings?": **No**
+
+#### Step 2: Deploy via GitHub (Vercel Web Dashboard)
+1. Push your repository to GitHub (see section 13).
+2. Go to [vercel.com/new](https://vercel.com/new).
+3. Import your GitHub repository.
+4. Leave Framework Preset as **Other** (Vercel automatically detects Python via `api/index.py` and `requirements.txt`).
+5. Click **Deploy**.
+
+> **Note on Vercel Serverless SQLite**:
+> Vercel executes serverless functions on a read-only filesystem with an ephemeral `/tmp` partition. The system automatically detects Vercel environments and operates with `/tmp/digital_twin.db`, initialized from the seed database on cold start. For continuous multi-tenant production state persistence across edge functions, an external relational database (e.g. Supabase, Turso, Neon Postgres) can be connected via the `DB_PATH` environment variable.
+
+### B. Deploying to Render / Railway / Linux Containers
+The repository is also equipped for stateful container deployment:
+- `Procfile`: Configured for Gunicorn WSGI (`web: gunicorn wsgi:app`)
+- `render.yaml`: Infrastructure-as-code blueprint for Render Web Services
+
+1. Connect your GitHub repository to [Render](https://render.com).
+2. Create a new **Web Service**.
+3. Render will auto-detect `render.yaml` or you can specify:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn wsgi:app`
+
+---
+
+## 13. Pushing to GitHub
+
+To publish this project to your GitHub account:
+
+```bash
+# 1. Check git status
+git status
+
+# 2. Add remote origin (replace with your GitHub repository URL)
+git remote add origin https://github.com/<your-username>/<your-repo-name>.git
+
+# 3. Rename branch to main (if preferred)
+git branch -M main
+
+# 4. Push code to GitHub
+git push -u origin main
+```
+
 

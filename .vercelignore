@@ -1,0 +1,14 @@
+# Vercel deployment bundle ignore list
+.git
+.github
+.pytest_cache
+tests
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.log
+venv
+env
+.env
+launch.bat

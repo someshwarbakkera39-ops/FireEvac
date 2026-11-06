@@ -13,14 +13,20 @@ from database.seed_data import seed_all
 from engine.graph_model import BlockAGraphModel
 from engine.dijkstra import DijkstraRoutingEngine
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    root_path=BASE_DIR,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 app.secret_key = os.environ.get("SECRET_KEY", "block-a-digital-twin-safety-key-2026")
 CORS(app, supports_credentials=True)
 
 # Register database connection teardown
 app.teardown_appcontext(close_db)
 
-DATA_PATH = os.path.join(app.root_path, "static", "data", "building_model.json")
+DATA_PATH = os.path.join(BASE_DIR, "static", "data", "building_model.json")
 
 # Initialize graph model & dynamic Dijkstra engine
 graph_model = BlockAGraphModel(DATA_PATH)

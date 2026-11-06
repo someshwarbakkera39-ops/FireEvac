@@ -7,21 +7,43 @@ import os
 import sqlite3
 from flask import g
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "digital_twin.db")
 SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
+
+def get_db_path():
+    """Resolves database location dynamically, handling read-only serverless filesystems like Vercel."""
+    if "DB_PATH" in os.environ:
+        return os.environ["DB_PATH"]
+    
+    # Check for Vercel or AWS Lambda serverless execution
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        tmp_db = "/tmp/digital_twin.db"
+        if not os.path.exists(tmp_db):
+            source_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "digital_twin.db")
+            if os.path.exists(source_db):
+                import shutil
+                try:
+                    shutil.copy2(source_db, tmp_db)
+                except Exception:
+                    pass
+        return tmp_db
+        
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "digital_twin.db")
+
+DB_PATH = get_db_path()
 
 def get_db():
     """Returns a thread-local SQLite connection with dictionary row access."""
+    active_path = get_db_path()
     try:
         # Check if in Flask app context
         if "db" not in g:
-            g.db = sqlite3.connect(DB_PATH)
+            g.db = sqlite3.connect(active_path)
             g.db.row_factory = sqlite3.Row
             g.db.execute("PRAGMA foreign_keys = ON")
         return g.db
     except RuntimeError:
         # Outside application context (CLI or standalone script)
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(active_path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         return conn

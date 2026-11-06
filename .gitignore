@@ -3,14 +3,32 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Pytest cache
+# Pytest & Coverage cache
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Virtual Environment
+# Virtual Environments
 venv/
 env/
+ENV/
 .env
+.env.local
 
-# SQLite local testing DB (preserved or committed as seed)
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Log files
 *.log
 
+# Vercel build output
+.vercel/
