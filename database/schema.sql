@@ -103,6 +103,20 @@ CREATE TABLE IF NOT EXISTS qr_scans_log (
     scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9. IoT Environmental Sensors & AI CCTV Surveillance Cameras
+CREATE TABLE IF NOT EXISTS iot_devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'camera', 'smoke_sensor', 'flame_sensor', 'thermal_sensor'
+    floor_id INTEGER NOT NULL,
+    location_x REAL NOT NULL,
+    location_y REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'normal', -- 'normal', 'alert', 'offline'
+    last_reading TEXT,
+    last_triggered TIMESTAMP,
+    FOREIGN KEY (floor_id) REFERENCES floors(id) ON DELETE CASCADE
+);
+
 -- Create Indices for High-Frequency Spatial Lookups
 CREATE INDEX IF NOT EXISTS idx_nodes_floor ON nodes(floor_id);
 CREATE INDEX IF NOT EXISTS idx_paths_from ON paths(from_node);
@@ -110,4 +124,5 @@ CREATE INDEX IF NOT EXISTS idx_paths_to ON paths(to_node);
 CREATE INDEX IF NOT EXISTS idx_paths_blocked ON paths(is_blocked);
 CREATE INDEX IF NOT EXISTS idx_hazards_floor ON hazards(floor_id);
 CREATE INDEX IF NOT EXISTS idx_qr_code_id ON qr_codes(code_id);
+CREATE INDEX IF NOT EXISTS idx_iot_floor ON iot_devices(floor_id);
 

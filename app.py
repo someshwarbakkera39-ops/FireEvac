@@ -158,6 +158,55 @@ def get_nodes():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+def point_to_segment_dist(px, py, x1, y1, x2, y2):
+    """Calculates perpendicular Euclidean distance from point (px, py) to line segment (x1, y1)-(x2, y2)."""
+    dx = x2 - x1
+    dy = y2 - y1
+    l2 = dx * dx + dy * dy
+    if l2 == 0:
+        return math.hypot(px - x1, py - y1)
+    t = ((px - x1) * dx + (py - y1) * dy) / l2
+    t = max(0.0, min(1.0, t))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+def get_active_hazard_exclusions(custom_blocked_nodes=None, custom_blocked_edges=None):
+    """
+    Computes compromised nodes and blocked corridor edges by intersecting all active hazards
+    and barricades in SQLite database against graph topology.
+    Returns (blocked_nodes, blocked_edges, hazards_list).
+    """
+    blocked_edges = list(custom_blocked_edges) if custom_blocked_edges is not None else []
+    blocked_nodes = list(custom_blocked_nodes) if custom_blocked_nodes is not None else []
+
+    if custom_blocked_edges is None:
+        db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
+        blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
+
+    db_hazards = query_db("SELECT * FROM hazards")
+    for h in db_hazards:
+        h_fl = h["floor_id"]
+        hx, hy = float(h["location_x"]), float(h["location_y"])
+        hradius = float(h.get("radius") or 45.0)
+
+        # Block compromised nodes within hazard radius + safety margin
+        for nid, n in graph_model.nodes.items():
+            if n["floor"] == h_fl:
+                if math.hypot(n["x"] - hx, n["y"] - hy) <= (hradius + 15):
+                    if nid not in blocked_nodes:
+                        blocked_nodes.append(nid)
+
+        # Block compromised corridor edges traversing through the hazard radius
+        for edge in graph_model.edges:
+            u = graph_model.nodes.get(edge["from"])
+            v = graph_model.nodes.get(edge["to"])
+            if u and v and u["floor"] == h_fl and v["floor"] == h_fl:
+                if point_to_segment_dist(hx, hy, u["x"], u["y"], v["x"], v["y"]) <= (hradius + 20):
+                    pair = [edge["from"], edge["to"]]
+                    if pair not in blocked_edges:
+                        blocked_edges.append(pair)
+
+    return blocked_nodes, blocked_edges, db_hazards
+
 @app.route("/api/route", methods=["POST"])
 def calculate_route():
     """
@@ -168,49 +217,10 @@ def calculate_route():
         data = request.get_json() or {}
         start_node = data.get("start_node", "NODE_ROOM_3_01")
         target_exit = data.get("target_exit")
-        blocked_edges = data.get("blocked_edges")
-        blocked_nodes = data.get("blocked_nodes")
+        req_blocked_edges = data.get("blocked_edges")
+        req_blocked_nodes = data.get("blocked_nodes")
 
-        def point_to_segment_dist(px, py, x1, y1, x2, y2):
-            dx = x2 - x1
-            dy = y2 - y1
-            l2 = dx * dx + dy * dy
-            if l2 == 0:
-                return math.hypot(px - x1, py - y1)
-            t = ((px - x1) * dx + (py - y1) * dy) / l2
-            t = max(0.0, min(1.0, t))
-            return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
-
-        if blocked_edges is None:
-            db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
-            blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
-
-        if blocked_nodes is None:
-            blocked_nodes = []
-
-        # Intersect database hazards against both nodes and corridor edges
-        db_hazards = query_db("SELECT floor_id, location_x, location_y, radius FROM hazards")
-        for h in db_hazards:
-            h_fl = h["floor_id"]
-            hx, hy = float(h["location_x"]), float(h["location_y"])
-            hradius = float(h.get("radius") or 45.0)
-
-            # Block compromised nodes
-            for nid, n in graph_model.nodes.items():
-                if n["floor"] == h_fl:
-                    if math.hypot(n["x"] - hx, n["y"] - hy) <= (hradius + 15):
-                        if nid not in blocked_nodes:
-                            blocked_nodes.append(nid)
-
-            # Block compromised corridor edges
-            for edge in graph_model.edges:
-                u = graph_model.nodes.get(edge["from"])
-                v = graph_model.nodes.get(edge["to"])
-                if u and v and u["floor"] == h_fl and v["floor"] == h_fl:
-                    if point_to_segment_dist(hx, hy, u["x"], u["y"], v["x"], v["y"]) <= (hradius + 20):
-                        pair = [edge["from"], edge["to"]]
-                        if pair not in blocked_edges:
-                            blocked_edges.append(pair)
+        blocked_nodes, blocked_edges, _ = get_active_hazard_exclusions(req_blocked_nodes, req_blocked_edges)
 
         if target_exit and isinstance(target_exit, str):
             target_exit = [target_exit]
@@ -472,64 +482,8 @@ def get_qr_image(code_id):
         buf.seek(0)
         return send_file(buf, mimetype="image/png")
 
-@app.route("/api/qr", methods=["POST"])
-def register_qr_code():
-    """Registers a new stationary QR marker label mapped to a node."""
-    data = request.get_json() or {}
-    code_id = data.get("code_id")
-    node_id = data.get("node_id")
-    floor_id = data.get("floor_id", 0)
-    desc = data.get("description", "Stationary indoor QR checkpoint")
-    label = data.get("location_label", code_id)
-
-    if not code_id or not node_id:
-        return jsonify({"status": "error", "message": "code_id and node_id are required."}), 400
-
-    try:
-        execute_db(
-            "INSERT INTO qr_codes (code_id, node_id, floor_id, description, location_label) VALUES (?, ?, ?, ?, ?)",
-            [code_id, node_id, floor_id, desc, label]
-        )
-        return jsonify({"status": "success", "message": f"QR code '{code_id}' registered successfully."}), 201
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
-
-# In-memory store for Incident Commander / Admin live location
-_COMMANDER_LOCATION = {
-    "node_id": "NODE_ROOM_G_03",
-    "floor_id": 0,
-    "location_label": "Campus Security Command & Incident Post G-103",
-    "description": "Ground Floor Primary Security Control & Incident Commander Post",
-    "status": "Active On-Duty",
-    "last_updated": "Live Telemetry"
-}
-
-@app.route("/api/commander/location", methods=["GET", "POST"])
-def commander_location():
-    """
-    GET: Returns the current live stationary/mobile location of the Incident Commander / Admin.
-    POST: Updates the commander's post or position.
-    """
-    global _COMMANDER_LOCATION
-    if request.method == "POST":
-        data = request.get_json() or {}
-        if "node_id" in data:
-            _COMMANDER_LOCATION["node_id"] = data["node_id"]
-        if "floor_id" in data:
-            _COMMANDER_LOCATION["floor_id"] = int(data["floor_id"])
-        if "location_label" in data:
-            _COMMANDER_LOCATION["location_label"] = data["location_label"]
-        if "description" in data:
-            _COMMANDER_LOCATION["description"] = data["description"]
-        if "status" in data:
-            _COMMANDER_LOCATION["status"] = data["status"]
-        _COMMANDER_LOCATION["last_updated"] = "Updated just now"
-        return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
-
-    return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
-
 # ============================================================================
-# Emergency System Activation & Master QR Control APIs
+# Emergency System Activation & Master QR Control State
 # ============================================================================
 
 _SYSTEM_STATE = {
@@ -588,6 +542,252 @@ def standby_system_emergency():
         "message": "System set to Standby Monitoring mode.",
         "system": _SYSTEM_STATE
     })
+
+@app.route("/api/qr", methods=["POST"])
+def register_qr_code():
+    """
+    Registers a new stationary QR marker label mapped to a node.
+    Enforces rule: QR checkpoints can only be placed IF AND ONLY IF system is ACTIVE.
+    Supports point-and-click dynamic placement with x_coord and y_coord.
+    """
+    global _SYSTEM_STATE
+    if not _SYSTEM_STATE.get("is_active"):
+        return jsonify({
+            "status": "error",
+            "message": "QR checkpoints can only be placed when the Emergency System is ACTIVE. Please activate the system first."
+        }), 403
+
+    data = request.get_json() or {}
+    code_id = data.get("code_id")
+    floor_id = int(data.get("floor_id", 0))
+    desc = data.get("description", "Stationary indoor QR checkpoint")
+    label = data.get("location_label") or code_id
+    node_id = data.get("node_id")
+    x_coord = data.get("x_coord")
+    y_coord = data.get("y_coord")
+
+    if not code_id and label:
+        clean_name = "".join(c if c.isalnum() else "_" for c in label.upper()).strip("_")
+        code_id = f"QR_{floor_id}_{clean_name}"[:24]
+
+    if not code_id:
+        return jsonify({"status": "error", "message": "code_id or location_label is required."}), 400
+
+    # Dynamic spatial placement on canvas
+    if x_coord is not None and y_coord is not None:
+        x_val = float(x_coord)
+        y_val = float(y_coord)
+
+        if not node_id:
+            # Check for closest node on this floor
+            closest_nid = None
+            closest_dist = float("inf")
+            for nid, n in graph_model.nodes.items():
+                if n["floor"] == floor_id:
+                    d = math.hypot(n["x"] - x_val, n["y"] - y_val)
+                    if d < closest_dist:
+                        closest_dist = d
+                        closest_nid = nid
+
+            if closest_dist <= 35 and closest_nid:
+                node_id = closest_nid
+            else:
+                new_nid = f"NODE_CUSTOM_{code_id}"
+                node_id = new_nid
+                execute_db(
+                    "INSERT OR REPLACE INTO nodes (id, floor_id, x_coord, y_coord, type, name, code) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    [new_nid, floor_id, x_val, y_val, "corridor", label, code_id]
+                )
+                if closest_nid:
+                    w = round(closest_dist * 0.25, 2)
+                    execute_db(
+                        "INSERT OR IGNORE INTO paths (from_node, to_node, weight, is_blocked, edge_type, bidirectional) VALUES (?, ?, ?, 0, 'corridor', 1)",
+                        [new_nid, closest_nid, w]
+                    )
+                    execute_db(
+                        "INSERT OR IGNORE INTO paths (from_node, to_node, weight, is_blocked, edge_type, bidirectional) VALUES (?, ?, ?, 0, 'corridor', 1)",
+                        [closest_nid, new_nid, w]
+                    )
+                # Update in-memory graph model for immediate dynamic routing
+                graph_model.nodes[new_nid] = {
+                    "id": new_nid,
+                    "floor": floor_id,
+                    "x": x_val,
+                    "y": y_val,
+                    "type": "corridor",
+                    "name": label,
+                    "code": code_id
+                }
+                if closest_nid:
+                    if new_nid not in graph_model.adjacency:
+                        graph_model.adjacency[new_nid] = []
+                    if closest_nid not in graph_model.adjacency:
+                        graph_model.adjacency[closest_nid] = []
+                    graph_model.adjacency[new_nid].append({"node": closest_nid, "weight": w, "type": "corridor"})
+                    graph_model.adjacency[closest_nid].append({"node": new_nid, "weight": w, "type": "corridor"})
+                    graph_model.edges.append({"from": new_nid, "to": closest_nid, "weight": w, "type": "corridor", "bidirectional": True})
+
+    if not node_id:
+        return jsonify({"status": "error", "message": "node_id or valid coordinates are required."}), 400
+
+    try:
+        execute_db(
+            "INSERT OR REPLACE INTO qr_codes (code_id, node_id, floor_id, description, location_label) VALUES (?, ?, ?, ?, ?)",
+            [code_id, node_id, floor_id, desc, label]
+        )
+        base_url = request.host_url.rstrip("/")
+        return jsonify({
+            "status": "success",
+            "message": f"QR checkpoint '{code_id}' registered successfully.",
+            "qr": {
+                "code_id": code_id,
+                "node_id": node_id,
+                "floor_id": floor_id,
+                "location_label": label,
+                "description": desc,
+                "scan_url": f"{base_url}/public?qr={code_id}",
+                "image_url": f"/api/qr/image/{code_id}"
+            }
+        }), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+# ============================================================================
+# IoT Environmental Sensors & AI Surveillance Cameras APIs
+# ============================================================================
+
+_AUTOMATION_ENABLED = True
+
+@app.route("/api/sensors", methods=["GET"])
+def get_sensors():
+    """Returns active IoT sensors and AI surveillance cameras with live telemetry status."""
+    floor_filter = request.args.get("floor", type=int)
+    if floor_filter is not None:
+        sensors = query_db("SELECT * FROM iot_devices WHERE floor_id = ? ORDER BY id ASC", [floor_filter])
+    else:
+        sensors = query_db("SELECT * FROM iot_devices ORDER BY floor_id ASC, id ASC")
+    
+    return jsonify({
+        "status": "success",
+        "automation_enabled": _AUTOMATION_ENABLED,
+        "sensors": sensors,
+        "total": len(sensors)
+    })
+
+@app.route("/api/sensors/toggle-automation", methods=["POST"])
+def toggle_sensor_automation():
+    """Toggles automated emergency detection and hazard spawning from IoT sensor grid."""
+    global _AUTOMATION_ENABLED
+    data = request.get_json(silent=True) or {}
+    if "enabled" in data:
+        _AUTOMATION_ENABLED = bool(data["enabled"])
+    else:
+        _AUTOMATION_ENABLED = not _AUTOMATION_ENABLED
+
+    return jsonify({
+        "status": "success",
+        "automation_enabled": _AUTOMATION_ENABLED,
+        "message": f"Automated IoT/AI Hazard Detection is now {'ENABLED' if _AUTOMATION_ENABLED else 'DISABLED'}."
+    })
+
+@app.route("/api/sensors/<string:device_id>/trigger", methods=["POST"])
+def trigger_sensor_alert(device_id):
+    """
+    Simulates or logs a hazard detection event on an IoT sensor or AI CCTV camera.
+    If automation is enabled, automatically registers a fire/smoke hazard at device coordinates.
+    """
+    dev = query_db("SELECT * FROM iot_devices WHERE id = ?", [device_id], one=True)
+    if not dev:
+        return jsonify({"status": "error", "message": f"IoT device '{device_id}' not found."}), 404
+
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    reading = "CRITICAL ALERT: Hazard Signature Detected"
+    execute_db(
+        "UPDATE iot_devices SET status = 'alert', last_reading = ?, last_triggered = ? WHERE id = ?",
+        [reading, now_str, device_id]
+    )
+
+    hazard_id = None
+    if _AUTOMATION_ENABLED:
+        hz_type = "smoke" if "smoke" in dev["type"] else "fire"
+        res = execute_db(
+            "INSERT INTO hazards (floor_id, location_x, location_y, type, severity, radius, description, reported_by) "
+            "VALUES (?, ?, ?, ?, 'critical', 48.0, ?, 'AI_IoT_Automated_Grid')",
+            [dev["floor_id"], dev["location_x"], dev["location_y"], hz_type, f"Automated detection from {dev['name']}"]
+        )
+        hazard_id = res["lastrowid"]
+
+    updated_dev = query_db("SELECT * FROM iot_devices WHERE id = ?", [device_id], one=True)
+    return jsonify({
+        "status": "success",
+        "message": f"Sensor '{dev['name']}' triggered alert status.",
+        "device": updated_dev,
+        "automation_active": _AUTOMATION_ENABLED,
+        "hazard_created_id": hazard_id
+    })
+
+@app.route("/api/sensors/<string:device_id>/reset", methods=["POST"])
+def reset_sensor_device(device_id):
+    """Resets an IoT device or AI camera back to normal nominal state."""
+    dev = query_db("SELECT * FROM iot_devices WHERE id = ?", [device_id], one=True)
+    if not dev:
+        return jsonify({"status": "error", "message": f"IoT device '{device_id}' not found."}), 404
+
+    execute_db(
+        "UPDATE iot_devices SET status = 'normal', last_reading = 'Nominal telemetry (System Normal)' WHERE id = ?",
+        [device_id]
+    )
+    updated_dev = query_db("SELECT * FROM iot_devices WHERE id = ?", [device_id], one=True)
+    return jsonify({
+        "status": "success",
+        "message": f"Device '{dev['name']}' reset to normal operational state.",
+        "device": updated_dev
+    })
+
+@app.route("/api/sensors/reset-all", methods=["POST"])
+def reset_all_sensors():
+    """Resets all IoT sensors and AI CCTV cameras back to normal operational state."""
+    execute_db("UPDATE iot_devices SET status = 'normal', last_reading = 'Nominal telemetry'")
+    sensors = query_db("SELECT * FROM iot_devices ORDER BY floor_id ASC, id ASC")
+    return jsonify({
+        "status": "success",
+        "message": "All IoT sensors and AI cameras restored to nominal operational state.",
+        "sensors": sensors
+    })
+
+# In-memory store for Incident Commander / Admin live location
+_COMMANDER_LOCATION = {
+    "node_id": "NODE_ROOM_G_03",
+    "floor_id": 0,
+    "location_label": "Campus Security Command & Incident Post G-103",
+    "description": "Ground Floor Primary Security Control & Incident Commander Post",
+    "status": "Active On-Duty",
+    "last_updated": "Live Telemetry"
+}
+
+@app.route("/api/commander/location", methods=["GET", "POST"])
+def commander_location():
+    """
+    GET: Returns current live location of Incident Commander.
+    POST: Updates commander's post.
+    """
+    global _COMMANDER_LOCATION
+    if request.method == "POST":
+        data = request.get_json() or {}
+        if "node_id" in data:
+            _COMMANDER_LOCATION["node_id"] = data["node_id"]
+        if "floor_id" in data:
+            _COMMANDER_LOCATION["floor_id"] = int(data["floor_id"])
+        if "location_label" in data:
+            _COMMANDER_LOCATION["location_label"] = data["location_label"]
+        if "description" in data:
+            _COMMANDER_LOCATION["description"] = data["description"]
+        if "status" in data:
+            _COMMANDER_LOCATION["status"] = data["status"]
+        _COMMANDER_LOCATION["last_updated"] = "Updated just now"
+        return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
+
+    return jsonify({"status": "success", "commander": _COMMANDER_LOCATION})
 
 # ============================================================================
 # Occupancy, SOS & Drill Simulation APIs
@@ -676,20 +876,8 @@ def record_qr_scan():
             [occupant_id, floor_id, node_id, code_id]
         )
 
-    # Compute immediate dynamic evacuation route
-    db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
-    blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
-
-    blocked_nodes = []
-    db_hazards = query_db("SELECT floor_id, location_x, location_y, radius FROM hazards")
-    for h in db_hazards:
-        h_fl = h["floor_id"]
-        hx, hy = h["location_x"], h["location_y"]
-        hradius = h.get("radius") or 45.0
-        for nid, n in graph_model.nodes.items():
-            if n["floor"] == h_fl:
-                if math.hypot(n["x"] - hx, n["y"] - hy) <= hradius:
-                    blocked_nodes.append(nid)
+    # Compute immediate dynamic evacuation route with full hazard exclusion (nodes & corridor edges)
+    blocked_nodes, blocked_edges, hazards_list = get_active_hazard_exclusions()
 
     route_res = routing_engine.calculate_evacuation_route(
         start_node_id=node_id,
@@ -717,6 +905,9 @@ def record_qr_scan():
             "coordinates": {"x": qr["x_coord"], "y": qr["y_coord"]}
         },
         "route": route_res,
+        "hazards": hazards_list,
+        "blocked_nodes": blocked_nodes,
+        "blocked_edges": blocked_edges,
         "metrics": {
             "total_scanned": total_scanned,
             "inside_building": inside_count,

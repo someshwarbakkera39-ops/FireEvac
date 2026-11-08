@@ -49,6 +49,9 @@
       <button class="tool-btn tool-inspect" id="toolInspect" data-mode="inspect" title="Click hazard to resolve/delete">
         🧹 Clear / Inspect
       </button>
+      <button class="tool-btn tool-qr" id="toolQr" data-mode="place_qr" title="Click map to place stationary QR checkpoint (Requires Active System)" style="background: rgba(6, 182, 212, 0.15); border-color: #06b6d4; color: #67e8f9;">
+        📷 Place QR
+      </button>
     </div>
 
     <!-- Right Controls -->
@@ -294,6 +297,32 @@
         </div>
       </div>
 
+      <!-- Automated AI CCTV & IoT Environmental Sensor Station -->
+      <div class="sidebar-section">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Automated AI CCTV & IoT Sensors</span>
+          <span id="automationStatusPill" style="font-size: 9px; font-weight: 800; background: #16a34a; color: #fff; padding: 2px 6px; border-radius: 4px;">
+            AUTO-DETECTION: ON
+          </span>
+        </div>
+        <p style="font-size: 10.5px; color: #94a3b8; margin-bottom: 8px;">
+          Smart sensors automatically detect thermal spikes and smoke, creating dynamic hazards across the twin:
+        </p>
+        
+        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+          <button id="btnToggleAutomation" class="canvas-btn" style="flex: 2; background: #2563eb; color: #fff; font-weight: 700; font-size: 10.5px; justify-content: center;">
+            🤖 Toggle Auto-Detection
+          </button>
+          <button id="btnResetAllSensors" class="canvas-btn" style="flex: 1; font-size: 10.5px; justify-content: center;" title="Reset all sensors to normal">
+            ✓ Reset All
+          </button>
+        </div>
+
+        <div id="adminSensorsList" style="display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; padding-right: 2px;">
+          <!-- Dynamically populated sensor rows -->
+        </div>
+      </div>
+
       <!-- Printable QR Code Generator & Test Kit -->
       <div class="sidebar-section">
         <div class="section-title">Printable QR Code Testing Kit</div>
@@ -344,11 +373,14 @@
   <script src="/static/js/dijkstra.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      let activeToolMode = "fire"; // 'fire', 'smoke', 'barrier', 'inspect'
+      let activeToolMode = "fire"; // 'fire', 'smoke', 'barrier', 'inspect', 'place_qr'
       let currentFloor = 0;
       let activeHazards = [];
       let blockedNodes = new Set();
       let blockedEdges = new Set();
+      let isSystemActive = true;
+      let allIoTSensors = [];
+      let isAutomationEnabled = true;
 
       // 1. Initialize Map Renderer
       const renderer = new FloorMapRenderer("floorMapContainer", {
@@ -406,6 +438,7 @@
         floorButtons.forEach(btn => btn.classList.toggle("active", parseInt(btn.dataset.floor, 10) === currentFloor));
         const fl = window.BLOCK_A_MODEL.floors[currentFloor];
         currentFloorTag.textContent = `${fl.name.toUpperCase()} (LEVEL ${fl.level})`;
+        renderSensorsListUI();
       }
 
       floorButtons.forEach(btn => btn.addEventListener("click", () => updateFloorUI(btn.dataset.floor)));
@@ -426,7 +459,8 @@
             fire: "MODE: CLICK MAP TO DROP FIRE HAZARD",
             smoke: "MODE: CLICK MAP TO DROP DENSE SMOKE OBSTACLE",
             barrier: "MODE: CLICK CORRIDOR TO PLACE PHYSICAL BARRICADE",
-            inspect: "MODE: CLICK HAZARD OR BARRICADE TO RESOLVE / CLEAR"
+            inspect: "MODE: CLICK HAZARD OR BARRICADE TO RESOLVE / CLEAR",
+            place_qr: "MODE: CLICK MAP TO PLACE STATIONARY QR CHECKPOINT"
           };
           currentToolIndicator.textContent = modeTexts[activeToolMode] || "READY";
         });
@@ -441,6 +475,45 @@
       });
 
       async function handleCanvasPointClick(x, y, floorLevel, label) {
+        if (activeToolMode === "place_qr") {
+          // Strict Constraint: QR Checkpoint placement allowed ONLY IF system is active!
+          if (!isSystemActive) {
+            alert("⚠️ ACTION BLOCKED: EMERGENCY SYSTEM IS IN STANDBY\n\nQR checkpoints can ONLY be placed when the Emergency Evacuation System is ACTIVE.\n\nPlease click '🚨 START SYSTEM & ACTIVATE QRs' in the Master Control station first to arm the system before adding checkpoints.");
+            return;
+          }
+
+          const qrName = prompt(`Enter Location Label for Checkpoint on Floor ${floorLevel}:`, `Level ${floorLevel} Corridor Checkpoint`);
+          if (!qrName || !qrName.trim()) return;
+
+          try {
+            const resp = await fetch("/api/qr", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                floor_id: floorLevel,
+                location_label: qrName.trim(),
+                description: `Admin custom placed wall checkpoint at Floor ${floorLevel} (${x}, ${y})`,
+                x_coord: x,
+                y_coord: y
+              })
+            });
+            const json = await resp.json();
+            if (json.status === "success" && json.qr) {
+              await populateAdminQrDropdown();
+              if (adminQrSelect) {
+                adminQrSelect.value = json.qr.code_id;
+                updateAdminQrBadge(json.qr.code_id);
+              }
+              alert(`✓ QR CHECKPOINT REGISTERED SUCCESSFULLY!\n\nPayload: ${json.qr.code_id}\nLocation: ${json.qr.location_label}\nFloor: Level ${floorLevel}\nCoordinates: (${x}, ${y})\n\nThis QR has been added to the Digital Twin and is ready for printing in the QR Print Kit!`);
+            } else {
+              alert(json.message || "Failed to place QR checkpoint.");
+            }
+          } catch (err) {
+            alert("Error communicating with server while placing QR: " + err.message);
+          }
+          return;
+        }
+
         if (activeToolMode === "inspect") {
           const hazIndex = activeHazards.findIndex(h => 
             parseInt(h.floor_id, 10) === floorLevel && 
@@ -1169,6 +1242,7 @@
       }
 
       function updateSystemUI(sys) {
+        isSystemActive = Boolean(sys.is_active);
         if (sys.is_active) {
           if (sysStatusBadge) {
             sysStatusBadge.textContent = "SYSTEM ACTIVE";
@@ -1226,17 +1300,169 @@
         });
       }
 
+      // IoT Environmental Sensors & AI Surveillance Control
+      const automationStatusPill = document.getElementById("automationStatusPill");
+      const btnToggleAutomation = document.getElementById("btnToggleAutomation");
+      const btnResetAllSensors = document.getElementById("btnResetAllSensors");
+      const adminSensorsList = document.getElementById("adminSensorsList");
+
+      async function syncSensorsState() {
+        try {
+          const resp = await fetch("/api/sensors");
+          const json = await resp.json();
+          if (json.status === "success" && json.sensors) {
+            allIoTSensors = json.sensors;
+            isAutomationEnabled = Boolean(json.automation_enabled);
+            renderer.setIoTSensors(allIoTSensors);
+
+            if (automationStatusPill) {
+              if (isAutomationEnabled) {
+                automationStatusPill.textContent = "AUTO-DETECTION: ON";
+                automationStatusPill.style.background = "#16a34a";
+              } else {
+                automationStatusPill.textContent = "AUTO-DETECTION: OFF";
+                automationStatusPill.style.background = "#64748b";
+              }
+            }
+
+            renderSensorsListUI();
+          }
+        } catch (e) {}
+      }
+
+      function renderSensorsListUI() {
+        if (!adminSensorsList) return;
+        adminSensorsList.innerHTML = "";
+
+        const currentFloorSensors = allIoTSensors.filter(d => parseInt(d.floor_id, 10) === currentFloor);
+        const displayList = currentFloorSensors.length > 0 ? currentFloorSensors : allIoTSensors;
+
+        displayList.forEach(dev => {
+          const isAlert = dev.status === "alert";
+          const isCam = dev.type === "camera";
+          const icon = isCam ? "📹" : (dev.type.includes("smoke") ? "🚨" : "🔥");
+
+          const row = document.createElement("div");
+          row.style.cssText = `
+            background: ${isAlert ? 'rgba(220, 38, 38, 0.2)' : 'rgba(30, 41, 59, 0.6)'};
+            border: 1px solid ${isAlert ? '#ef4444' : '#334155'};
+            border-radius: 6px;
+            padding: 7px 9px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+          `;
+
+          row.innerHTML = `
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <span>${icon}</span>
+                <span style="font-size: 11px; font-weight: bold; color: ${isAlert ? '#fca5a5' : '#f8fafc'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ${dev.name}
+                </span>
+                <span style="font-size: 9px; background: #1e293b; color: #38bdf8; padding: 1px 4px; border-radius: 3px;">L${dev.floor_id}</span>
+              </div>
+              <div style="font-size: 9.5px; color: ${isAlert ? '#f87171' : '#94a3b8'}; margin-top: 2px;">
+                ${dev.last_reading || 'Telemetry Nominal'}
+              </div>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              ${!isAlert ? `
+                <button class="btn-trigger-sensor" data-id="${dev.id}" style="background: #dc2626; border: 1px solid #ef4444; color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 9.5px; font-weight: bold; cursor: pointer;">
+                  🔥 Alert
+                </button>
+              ` : `
+                <button class="btn-reset-sensor" data-id="${dev.id}" style="background: #16a34a; border: 1px solid #22c55e; color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 9.5px; font-weight: bold; cursor: pointer;">
+                  ✓ Reset
+                </button>
+              `}
+            </div>
+          `;
+          adminSensorsList.appendChild(row);
+        });
+
+        adminSensorsList.querySelectorAll(".btn-trigger-sensor").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const devId = e.target.getAttribute("data-id");
+            try {
+              const r = await fetch(`/api/sensors/${devId}/trigger`, { method: "POST" });
+              const j = await r.json();
+              if (j.status === "success") {
+                await syncHazardsFromDb();
+                await syncSensorsState();
+                if (j.hazard_created_id) {
+                  alert(`🚨 AUTOMATED SENSOR ALERT DETECTED!\n\n${j.message}\nAutomated AI created active hazard zone #${j.hazard_created_id} on the digital twin map.`);
+                }
+              }
+            } catch (err) {}
+          });
+        });
+
+        adminSensorsList.querySelectorAll(".btn-reset-sensor").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const devId = e.target.getAttribute("data-id");
+            try {
+              const r = await fetch(`/api/sensors/${devId}/reset`, { method: "POST" });
+              await r.json();
+              await syncSensorsState();
+            } catch (err) {}
+          });
+        });
+      }
+
+      if (btnToggleAutomation) {
+        btnToggleAutomation.addEventListener("click", async () => {
+          try {
+            const resp = await fetch("/api/sensors/toggle-automation", { method: "POST" });
+            const json = await resp.json();
+            if (json.status === "success") {
+              isAutomationEnabled = json.automation_enabled;
+              syncSensorsState();
+              alert(json.message);
+            }
+          } catch (e) {}
+        });
+      }
+
+      if (btnResetAllSensors) {
+        btnResetAllSensors.addEventListener("click", async () => {
+          try {
+            await fetch("/api/sensors/reset-all", { method: "POST" });
+            await syncSensorsState();
+            alert("✓ All IoT sensors and AI cameras restored to nominal operational state.");
+          } catch (e) {}
+        });
+      }
+
+      renderer.onSensorClick = (dev) => {
+        if (dev.status === "alert") {
+          if (confirm(`Sensor '${dev.name}' is in ALERT status!\n\nDo you want to reset this sensor to Normal?`)) {
+            fetch(`/api/sensors/${dev.id}/reset`, { method: "POST" }).then(() => syncSensorsState());
+          }
+        } else {
+          if (confirm(`IoT Device: ${dev.name}\nID: ${dev.id}\nFloor: Level ${dev.floor_id}\n\nDo you want to simulate a HAZARD ALERT on this sensor?`)) {
+            fetch(`/api/sensors/${dev.id}/trigger`, { method: "POST" }).then(() => {
+              syncHazardsFromDb();
+              syncSensorsState();
+            });
+          }
+        }
+      };
+
       // Initial Sync & Simulation Setup
       await syncHazardsFromDb();
       await syncOccupancyMetrics();
       await syncSystemStatus();
+      await syncSensorsState();
       await populateAdminQrDropdown();
       updateAdminQrBadge("QR_3_AILAB");
       await drillSim.initialize(12);
 
-      // Periodically poll occupancy metrics & system status every 3 seconds to keep counters fresh
+      // Periodically poll occupancy metrics, sensors & system status every 3 seconds
       setInterval(syncOccupancyMetrics, 3000);
       setInterval(syncSystemStatus, 3000);
+      setInterval(syncSensorsState, 3000);
     });
   </script>
 </body>

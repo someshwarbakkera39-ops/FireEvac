@@ -158,6 +158,28 @@ def seed_all():
         )
         print(f"[+] Seeded {len(occ_data)} occupancy tracking records.")
 
+    # 6. Seed IoT Environmental Sensors & AI CCTV Cameras
+    devices_count = query_db("SELECT COUNT(*) as count FROM iot_devices", one=True)["count"]
+    if devices_count == 0:
+        devices_data = [
+            ("CAM_G_LOBBY", "AI CCTV - Central Grand Atrium", "camera", 0, 600.0, 440.0, "normal", "AI Crowd Vision: Normal flow", None),
+            ("SENSOR_G_CAFE", "IoT Thermal/Flame Sensor - Cafeteria Kitchen", "flame_sensor", 0, 890.0, 220.0, "normal", "Ambient 23.4°C / Flame: NEGATIVE", None),
+            ("SENSOR_G_SUBSTATION", "IoT Thermal Sensor - Substation", "thermal_sensor", 0, 835.0, 505.0, "normal", "Thermal Load: 31.2°C (Nominal)", None),
+            ("CAM_1_BRIDGE", "AI CCTV - Skybridge Gallery L1", "camera", 1, 600.0, 370.0, "normal", "AI Feed: Walkway clear", None),
+            ("SENSOR_1_CSLAB", "IoT Optical Smoke Detector - CS Lab 106", "smoke_sensor", 1, 865.0, 210.0, "normal", "0.02% Obscuration / Normal", None),
+            ("CAM_2_CORRIDOR", "AI CCTV - West Corridor L2", "camera", 2, 275.0, 370.0, "normal", "AI Feed: Corridor clear", None),
+            ("SENSOR_2_SEMINAR", "IoT Flame & Thermal Sensor - Seminar Hall 206", "flame_sensor", 2, 865.0, 210.0, "normal", "Ambient 22.0°C / Flame: NEGATIVE", None),
+            ("CAM_3_AILAB", "AI CCTV - Robotics & AI Lab 305", "camera", 3, 600.0, 320.0, "normal", "Vision: Clear, Robotics docked", None),
+            ("SENSOR_3_HPC", "IoT Smoke & Heat Detector - HPC Data Vault", "smoke_sensor", 3, 865.0, 210.0, "normal", "0.01% Obscuration / Rack 19°C", None),
+            ("CAM_4_SKYDECK", "AI CCTV - Skydeck & Roof Exit Access", "camera", 4, 600.0, 370.0, "normal", "Clear - Weather calm", None),
+            ("SENSOR_4_AUDITORIUM", "IoT Multi-Spectrum Flame Detector - Auditorium 406", "flame_sensor", 4, 865.0, 210.0, "normal", "Optical IR/UV: SAFE", None)
+        ]
+        execute_many(
+            "INSERT INTO iot_devices (id, name, type, floor_id, location_x, location_y, status, last_reading, last_triggered) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            devices_data
+        )
+        print(f"[+] Seeded {len(devices_data)} IoT sensors and AI CCTV cameras.")
+
 if __name__ == "__main__":
     seed_all()
 

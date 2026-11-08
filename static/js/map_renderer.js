@@ -14,7 +14,9 @@ class FloorMapRenderer {
     this.onNodeClick = options.onNodeClick || null;
     this.onRoomClick = options.onRoomClick || null;
     this.onQrClick = options.onQrClick || null;
+    this.onSensorClick = options.onSensorClick || null;
     this.qrCodes = options.qrCodes || [];
+    this.iotSensors = options.iotSensors || [];
 
     // View state
     this.zoom = 1;
@@ -32,6 +34,7 @@ class FloorMapRenderer {
       stairwells: true,
       exits: true,
       grid: true,
+      sensors: true,
       graph: false,
       path: true,
       hazards: true,
@@ -107,10 +110,11 @@ class FloorMapRenderer {
           <g id="viewportGroup">
             <g id="gridLayer"></g>
             <g id="structureLayer"></g>
-            <g id="corridorLayer"></g>
             <g id="roomsLayer"></g>
+            <g id="corridorLayer"></g>
             <g id="stairwellsLayer"></g>
             <g id="exitsLayer"></g>
+            <g id="iotSensorsLayer"></g>
             <g id="graphLayer"></g>
             <g id="qrMarkersLayer"></g>
             <g id="hazardLayer"></g>
@@ -350,6 +354,11 @@ class FloorMapRenderer {
     this.render();
   }
 
+  setIoTSensors(sensorsList) {
+    this.iotSensors = sensorsList || [];
+    this.render();
+  }
+
   showTooltip(e, html) {
     const rect = this.container.getBoundingClientRect();
     this.tooltip.innerHTML = html;
@@ -369,10 +378,12 @@ class FloorMapRenderer {
     // Clear layers
     this.container.querySelector("#gridLayer").innerHTML = "";
     this.container.querySelector("#structureLayer").innerHTML = "";
-    this.container.querySelector("#corridorLayer").innerHTML = "";
     this.container.querySelector("#roomsLayer").innerHTML = "";
+    this.container.querySelector("#corridorLayer").innerHTML = "";
     this.container.querySelector("#stairwellsLayer").innerHTML = "";
     this.container.querySelector("#exitsLayer").innerHTML = "";
+    const iotLayer = this.container.querySelector("#iotSensorsLayer");
+    if (iotLayer) iotLayer.innerHTML = "";
     this.container.querySelector("#graphLayer").innerHTML = "";
     const qrLayer = this.container.querySelector("#qrMarkersLayer");
     if (qrLayer) qrLayer.innerHTML = "";
@@ -502,10 +513,22 @@ class FloorMapRenderer {
           lab: { fill: "#1e293b", border: "#0284c7", text: "#38bdf8" },
           server: { fill: "#1e293b", border: "#f59e0b", text: "#fbbf24" },
           medical: { fill: "#1e293b", border: "#ef4444", text: "#fca5a5" },
-          lobby: { fill: "#1e293b", border: "#3b82f6", text: "#93c5fd" },
+          lobby: { fill: "rgba(30, 41, 59, 0.75)", border: "#3b82f6", text: "#93c5fd" },
+          bridge: { fill: "rgba(30, 58, 138, 0.3)", border: "#60a5fa", text: "#93c5fd" },
           auditorium: { fill: "#1e293b", border: "#8b5cf6", text: "#c4b5fd" },
           library: { fill: "#1e293b", border: "#10b981", text: "#6ee7b7" },
-          executive: { fill: "#1e293b", border: "#ec4899", text: "#f472b6" }
+          executive: { fill: "#1e293b", border: "#ec4899", text: "#f472b6" },
+          cafeteria: { fill: "#1e293b", border: "#f97316", text: "#fdba74" },
+          conference: { fill: "#1e293b", border: "#38bdf8", text: "#bae6fd" },
+          restroom: { fill: "#1e293b", border: "#64748b", text: "#cbd5e1" },
+          workshop: { fill: "#1e293b", border: "#d97706", text: "#fde68a" },
+          utility: { fill: "#1e293b", border: "#eab308", text: "#fef08a" },
+          logistics: { fill: "#1e293b", border: "#a855f7", text: "#e9d5ff" },
+          studio: { fill: "#1e293b", border: "#06b6d4", text: "#a5f3fc" },
+          tutorial: { fill: "#1e293b", border: "#14b8a6", text: "#99f6e4" },
+          security: { fill: "#1e293b", border: "#ef4444", text: "#fca5a5" },
+          lounge: { fill: "#1e293b", border: "#38bdf8", text: "#bae6fd" },
+          facility: { fill: "#1e293b", border: "#64748b", text: "#cbd5e1" }
         };
         const conf = typeColors[r.type] || { fill: "#1e293b", border: "#64748b", text: "#e2e8f0" };
         const rw = (r.w !== undefined ? r.w : r.width) || 100;
@@ -575,6 +598,84 @@ class FloorMapRenderer {
       });
       exitsHtml += `</g>`;
       this.container.querySelector("#exitsLayer").innerHTML = exitsHtml;
+    }
+
+    // 6B. IoT Environmental Sensors & AI CCTV Surveillance Layer
+    if (this.layers.sensors !== false && this.iotSensors && this.iotSensors.length > 0) {
+      const sensorLayer = this.container.querySelector("#iotSensorsLayer");
+      if (sensorLayer) {
+        let sHtml = `<g id="iotSensorsGroup">`;
+        this.iotSensors.forEach(dev => {
+          if (parseInt(dev.floor_id, 10) === this.currentFloor) {
+            const sx = parseFloat(dev.location_x);
+            const sy = parseFloat(dev.location_y);
+            const isAlert = dev.status === "alert";
+            const isCam = dev.type === "camera";
+            const icon = isCam ? "📹" : (dev.type.includes("smoke") ? "🚨" : "🔥");
+            const badgeBg = isAlert ? "#dc2626" : (isCam ? "#0284c7" : "#0d9488");
+            const borderColor = isAlert ? "#ef4444" : (isCam ? "#38bdf8" : "#2dd4bf");
+
+            sHtml += `
+              <g class="iot-device-marker" data-id="${dev.id}" style="cursor:pointer;" ${isAlert ? 'filter="url(#redGlow)"' : ''}>
+                <!-- Pulsing Aura Halo -->
+                <circle cx="${sx}" cy="${sy}" r="${isAlert ? 22 : 14}" fill="${isAlert ? 'rgba(220, 38, 38, 0.35)' : (isCam ? 'rgba(56, 189, 248, 0.18)' : 'rgba(45, 212, 191, 0.18)')}" stroke="${borderColor}" stroke-width="${isAlert ? 2 : 1}">
+                  <animate attributeName="r" values="${isAlert ? '16;26;16' : '12;16;12'}" dur="${isAlert ? '1s' : '2.5s'}" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="${isAlert ? '0.9;0.2;0.9' : '0.6;0.2;0.6'}" dur="${isAlert ? '1s' : '2.5s'}" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- Hardware Device Badge Container -->
+                <rect x="${sx - 12}" y="${sy - 12}" width="24" height="24" rx="6"
+                      fill="${badgeBg}" stroke="#ffffff" stroke-width="1.8"/>
+
+                <!-- Device Emoji Glyph Icon -->
+                <text x="${sx}" y="${sy + 4.5}" fill="#ffffff" font-size="11" text-anchor="middle">${icon}</text>
+
+                <!-- Status LED Dot -->
+                <circle cx="${sx + 9}" cy="${sy - 9}" r="3.5" fill="${isAlert ? '#fbbf24' : '#4ade80'}" stroke="#0f172a" stroke-width="1.2">
+                  <animate attributeName="opacity" values="1;0.4;1" dur="${isAlert ? '0.6s' : '1.8s'}" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- Label Below Icon -->
+                <rect x="${sx - 48}" y="${sy + 14}" width="96" height="15" rx="3"
+                      fill="rgba(15, 23, 42, 0.95)" stroke="${borderColor}" stroke-width="1"/>
+                <text x="${sx}" y="${sy + 25}" fill="${isAlert ? '#fca5a5' : '#e2e8f0'}" font-size="8" font-weight="800" text-anchor="middle" letter-spacing="0.3">
+                  ${isAlert ? '🔥 ALERT!' : (dev.id.substring(0, 15))}
+                </text>
+              </g>
+            `;
+          }
+        });
+        sHtml += `</g>`;
+        sensorLayer.innerHTML = sHtml;
+
+        // Tooltip & Click Listeners for IoT Devices
+        this.container.querySelectorAll(".iot-device-marker").forEach(elem => {
+          const devId = elem.getAttribute("data-id");
+          const dev = this.iotSensors.find(d => d.id === devId);
+          if (dev) {
+            const isCam = dev.type === "camera";
+            const isAlert = dev.status === "alert";
+            elem.addEventListener("mouseenter", (e) => {
+              this.showTooltip(e, `
+                <div style="font-weight:bold; color:${isAlert ? '#ef4444' : '#38bdf8'}; display:flex; align-items:center; gap:5px;">
+                  <span>${isCam ? '📹 AI CCTV SURVEILLANCE' : '🚨 IoT ENVIRONMENTAL SENSOR'}</span>
+                </div>
+                <div style="font-size:12px; font-weight:800; color:#f8fafc; margin-top:2px;">${dev.name}</div>
+                <div style="font-size:10px; color:#94a3b8; margin-top:2px;">ID: <code style="color:#38bdf8;">${dev.id}</code> · Floor ${dev.floor_id}</div>
+                <div style="font-size:10.5px; color:${isAlert ? '#f87171' : '#4ade80'}; font-weight:bold; margin-top:4px;">
+                  Status: ${dev.status.toUpperCase()} ${isAlert ? '🔥 (INCIDENT DETECTED)' : '● (Nominal Operations)'}
+                </div>
+                <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">Telemetry: ${dev.last_reading || 'Telemetry Nominal'}</div>
+                <div style="font-size:9.5px; color:#38bdf8; font-weight:bold; margin-top:5px;">⚡ Click device to view / trigger / reset</div>
+              `);
+            });
+            elem.addEventListener("mouseleave", () => this.hideTooltip());
+            elem.addEventListener("click", () => {
+              if (this.onSensorClick) this.onSensorClick(dev);
+            });
+          }
+        });
+      }
     }
 
     // 7. Graph Topology Layer (V & E)

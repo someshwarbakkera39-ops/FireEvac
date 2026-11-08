@@ -920,8 +920,89 @@
         btn.addEventListener("click", () => updateFloorUI(btn.dataset.floor));
       });
 
-      // Synchronize Live Occupancy Stats & Hazards
+      function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const l2 = dx * dx + dy * dy;
+        if (l2 === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+      }
+
+      // Synchronize Live Hazards & Fire Overlays
+      let activePublicHazards = [];
       let lastHazardCount = -1;
+      async function syncPublicHazards() {
+        try {
+          const hazResp = await fetch("/api/hazards");
+          const hazJson = await hazResp.json();
+          if (hazJson.status === "success") {
+            activePublicHazards = hazJson.hazards || [];
+            const bNodes = [];
+            const bEdges = [];
+            if (graphData && graphData.nodes) {
+              activePublicHazards.forEach(h => {
+                const hx = parseFloat(h.location_x);
+                const hy = parseFloat(h.location_y);
+                const hFloor = parseInt(h.floor_id, 10);
+                const hRadius = (parseFloat(h.radius) || 45) + 15;
+                for (const nid in graphData.nodes) {
+                  const n = graphData.nodes[nid];
+                  if (parseInt(n.floor, 10) === hFloor) {
+                    if (Math.hypot(n.x - hx, n.y - hy) <= hRadius) {
+                      bNodes.push(nid);
+                    }
+                  }
+                }
+                if (graphData.edges) {
+                  graphData.edges.forEach(e => {
+                    const u = graphData.nodes[e.from];
+                    const v = graphData.nodes[e.to];
+                    if (u && v && parseInt(u.floor, 10) === hFloor && parseInt(v.floor, 10) === hFloor) {
+                      if (distToSegment(hx, hy, u.x, u.y, v.x, v.y) <= (hRadius + 15)) {
+                        bEdges.push(`${e.from}--${e.to}`);
+                        bEdges.push(`${e.to}--${e.from}`);
+                      }
+                    }
+                  });
+                }
+              });
+            }
+
+            renderer.setHazards(bNodes, bEdges, activePublicHazards);
+
+            if (activePublicHazards.length > 0) {
+              pubHazardAlertBanner.style.display = "flex";
+              pubHazardAlertText.textContent = `⚠️ Active Incident: ${activePublicHazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted around fire.`;
+            } else {
+              pubHazardAlertBanner.style.display = "none";
+            }
+
+            if (lastHazardCount !== -1 && activePublicHazards.length !== lastHazardCount) {
+              calculatePublicRoute();
+            }
+            lastHazardCount = activePublicHazards.length;
+            return activePublicHazards;
+          }
+        } catch (e) {
+          console.warn("Hazard sync note:", e);
+        }
+        return [];
+      }
+
+      // Synchronize Live IoT Sensors & AI Cameras
+      async function syncPublicSensors() {
+        try {
+          const resp = await fetch("/api/sensors");
+          const json = await resp.json();
+          if (json.status === "success" && json.sensors) {
+            renderer.setIoTSensors(json.sensors);
+          }
+        } catch (e) {}
+      }
+
+      // Synchronize Live Occupancy Stats
       async function syncPublicOccupancy() {
         try {
           const occResp = await fetch("/api/occupancy");
@@ -932,24 +1013,8 @@
             pubStatSafe.textContent = `${m.safely_evacuated} Evacuated`;
             pubStatScanned.textContent = `${m.total_scanned}`;
           }
-
-          // Check active hazards
-          const hazResp = await fetch("/api/hazards");
-          const hazJson = await hazResp.json();
-          if (hazJson.status === "success") {
-            const hazards = hazJson.hazards || [];
-            renderer.setHazards([], [], hazards);
-            if (lastHazardCount !== -1 && hazards.length !== lastHazardCount) {
-              if (hazards.length > 0) {
-                pubHazardAlertBanner.style.display = "flex";
-                pubHazardAlertText.textContent = `⚠️ Active Incident: ${hazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted.`;
-              } else {
-                pubHazardAlertBanner.style.display = "none";
-              }
-              calculatePublicRoute();
-            }
-            lastHazardCount = hazards.length;
-          }
+          await syncPublicHazards();
+          await syncPublicSensors();
         } catch (e) {}
       }
 
@@ -1317,6 +1382,22 @@
             pubFloorBadge.textContent = `LEVEL ${loc.floor}`;
             updateFloorUI(currentFloor);
 
+            // Immediately display fire and active hazards on the map
+            if (json.hazards) {
+              activePublicHazards = json.hazards;
+              renderer.setHazards(json.blocked_nodes || [], json.blocked_edges || [], json.hazards);
+              if (json.hazards.length > 0) {
+                pubHazardAlertBanner.style.display = "flex";
+                pubHazardAlertText.textContent = `⚠️ Active Incident: ${json.hazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted around fire.`;
+              } else {
+                pubHazardAlertBanner.style.display = "none";
+              }
+            } else {
+              await syncPublicHazards();
+            }
+
+            await syncPublicSensors();
+
             if (json.route && json.route.success) {
               renderPublicRouteResult(json.route);
             } else {
@@ -1572,6 +1653,8 @@
 
       // Initial execution & URL QR check
       await populateCheckpointsDropdown();
+      await syncPublicHazards();
+      await syncPublicSensors();
       syncPublicOccupancy();
       syncEmergencySystemStatus();
       setInterval(syncPublicOccupancy, 3500);
