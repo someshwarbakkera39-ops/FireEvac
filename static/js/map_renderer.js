@@ -287,9 +287,28 @@ class FloorMapRenderer {
 
   setHazards(blockedNodes = [], blockedEdges = [], rawHazards = []) {
     this.blockedNodes = new Set(blockedNodes);
-    this.blockedEdges = new Set(blockedEdges);
+    this.blockedEdges = new Set();
+    (blockedEdges || []).forEach(e => {
+      if (Array.isArray(e) && e.length === 2) {
+        this.blockedEdges.add(`${e[0]}--${e[1]}`);
+        this.blockedEdges.add(`${e[1]}--${e[0]}`);
+      } else if (typeof e === "string") {
+        if (e.includes("--")) {
+          const parts = e.split("--");
+          this.blockedEdges.add(`${parts[0]}--${parts[1]}`);
+          this.blockedEdges.add(`${parts[1]}--${parts[0]}`);
+        } else {
+          this.blockedEdges.add(e);
+        }
+      }
+    });
     this.rawHazards = rawHazards || [];
     this.render();
+  }
+
+  isEdgeBlocked(uId, vId) {
+    if (!this.blockedEdges || this.blockedEdges.size === 0) return false;
+    return this.blockedEdges.has(`${uId}--${vId}`) || this.blockedEdges.has(`${vId}--${uId}`);
   }
 
   getSvgCoordinates(clientX, clientY) {
@@ -914,30 +933,59 @@ class FloorMapRenderer {
         const v = this.graphData.nodes[vId];
 
         if (u && v) {
+          const isSegBlocked = this.blockedNodes.has(uId) ||
+                               this.blockedNodes.has(vId) ||
+                               this.isEdgeBlocked(uId, vId);
+
           // If both nodes are on current floor, draw the path line
           if (u.floor === this.currentFloor && v.floor === this.currentFloor) {
-            pathHtml += `
-              <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
-                    stroke="#16a34a" stroke-width="7" stroke-linecap="round"/>
-              <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
-                    stroke="#4ade80" stroke-width="3.5" stroke-linecap="round"
-                    stroke-dasharray="10, 8">
-                <animate attributeName="stroke-dashoffset" values="36;0" dur="0.9s" repeatCount="indefinite"/>
-              </line>
-            `;
+            if (isSegBlocked) {
+              pathHtml += `
+                <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
+                      stroke="#dc2626" stroke-width="8" stroke-linecap="round" stroke-dasharray="8,6"/>
+                <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
+                      stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+                <g transform="translate(${(u.x + v.x) / 2}, ${(u.y + v.y) / 2})">
+                  <circle r="12" fill="#991b1b" stroke="#ffffff" stroke-width="2"/>
+                  <text y="4" fill="#ffffff" font-size="10" font-weight="900" text-anchor="middle">✕</text>
+                </g>
+              `;
+            } else {
+              pathHtml += `
+                <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
+                      stroke="#16a34a" stroke-width="7" stroke-linecap="round"/>
+                <line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}"
+                      stroke="#4ade80" stroke-width="3.5" stroke-linecap="round"
+                      stroke-dasharray="10, 8">
+                  <animate attributeName="stroke-dashoffset" values="36;0" dur="0.9s" repeatCount="indefinite"/>
+                </line>
+              `;
+            }
           }
 
           // If vertical descent occurs at this step
           if (u.floor === this.currentFloor && v.floor !== this.currentFloor) {
-            // Occupant enters staircase to descend
-            pathHtml += `
-              <g class="stair-descent-beacon">
-                <circle cx="${u.x}" cy="${u.y}" r="14" fill="#22c55e" stroke="#ffffff" stroke-width="3"/>
-                <text x="${u.x}" y="${u.y + 5}" fill="#0f172a" font-size="12" font-weight="900" text-anchor="middle">↓</text>
-                <rect x="${u.x - 55}" y="${u.y + 18}" width="110" height="20" rx="4" fill="rgba(15, 23, 42, 0.9)" stroke="#16a34a" stroke-width="1.5"/>
-                <text x="${u.x}" y="${u.y + 32}" fill="#4ade80" font-size="10" font-weight="bold" text-anchor="middle">DESCEND TO L${v.floor}</text>
-              </g>
-            `;
+            const isStairBlocked = this.blockedNodes.has(uId) || this.blockedNodes.has(vId) || this.isEdgeBlocked(uId, vId);
+            if (isStairBlocked) {
+              pathHtml += `
+                <g class="stair-descent-beacon blocked">
+                  <circle cx="${u.x}" cy="${u.y}" r="14" fill="#dc2626" stroke="#ffffff" stroke-width="3"/>
+                  <text x="${u.x}" y="${u.y + 5}" fill="#ffffff" font-size="12" font-weight="900" text-anchor="middle">✕</text>
+                  <rect x="${u.x - 65}" y="${u.y + 18}" width="130" height="20" rx="4" fill="rgba(15, 23, 42, 0.95)" stroke="#dc2626" stroke-width="1.5"/>
+                  <text x="${u.x}" y="${u.y + 32}" fill="#ef4444" font-size="10" font-weight="bold" text-anchor="middle">STAIR BLOCKED!</text>
+                </g>
+              `;
+            } else {
+              // Occupant enters staircase to descend
+              pathHtml += `
+                <g class="stair-descent-beacon">
+                  <circle cx="${u.x}" cy="${u.y}" r="14" fill="#22c55e" stroke="#ffffff" stroke-width="3"/>
+                  <text x="${u.x}" y="${u.y + 5}" fill="#0f172a" font-size="12" font-weight="900" text-anchor="middle">↓</text>
+                  <rect x="${u.x - 55}" y="${u.y + 18}" width="110" height="20" rx="4" fill="rgba(15, 23, 42, 0.9)" stroke="#16a34a" stroke-width="1.5"/>
+                  <text x="${u.x}" y="${u.y + 32}" fill="#4ade80" font-size="10" font-weight="bold" text-anchor="middle">DESCEND TO L${v.floor}</text>
+                </g>
+              `;
+            }
           } else if (u.floor !== this.currentFloor && v.floor === this.currentFloor) {
             // Occupant arrives on this floor from staircase
             pathHtml += `
@@ -955,8 +1003,10 @@ class FloorMapRenderer {
       this.activePathNodes.forEach((nid, idx) => {
         const n = this.graphData.nodes[nid];
         if (n && n.floor === this.currentFloor) {
+          const isNodeBlocked = this.blockedNodes.has(nid);
+          const color = isNodeBlocked ? "#dc2626" : "#22c55e";
           pathHtml += `
-            <circle cx="${n.x}" cy="${n.y}" r="5" fill="#22c55e" stroke="#ffffff" stroke-width="2"/>
+            <circle cx="${n.x}" cy="${n.y}" r="${isNodeBlocked ? 7 : 5}" fill="${color}" stroke="#ffffff" stroke-width="2"/>
           `;
         }
       });

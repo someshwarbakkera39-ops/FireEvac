@@ -175,12 +175,26 @@ def get_active_hazard_exclusions(custom_blocked_nodes=None, custom_blocked_edges
     and barricades in SQLite database against graph topology.
     Returns (blocked_nodes, blocked_edges, hazards_list).
     """
-    blocked_edges = list(custom_blocked_edges) if custom_blocked_edges is not None else []
-    blocked_nodes = list(custom_blocked_nodes) if custom_blocked_nodes is not None else []
+    blocked_edges = []
+    if custom_blocked_edges is not None:
+        for item in custom_blocked_edges:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                blocked_edges.append([item[0], item[1]])
+            elif isinstance(item, str) and "--" in item:
+                u, v = item.split("--")
+                blocked_edges.append([u, v])
 
-    if custom_blocked_edges is None:
-        db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
-        blocked_edges = [[r["from_node"], r["to_node"]] for r in db_blocked]
+    # Always incorporate blocked corridor gates from the database
+    db_blocked = query_db("SELECT from_node, to_node FROM paths WHERE is_blocked = 1")
+    for r in db_blocked:
+        pair1 = [r["from_node"], r["to_node"]]
+        pair2 = [r["to_node"], r["from_node"]]
+        if pair1 not in blocked_edges:
+            blocked_edges.append(pair1)
+        if pair2 not in blocked_edges:
+            blocked_edges.append(pair2)
+
+    blocked_nodes = list(custom_blocked_nodes) if custom_blocked_nodes is not None else []
 
     db_hazards = query_db("SELECT * FROM hazards")
     for h in db_hazards:
@@ -201,9 +215,12 @@ def get_active_hazard_exclusions(custom_blocked_nodes=None, custom_blocked_edges
             v = graph_model.nodes.get(edge["to"])
             if u and v and u["floor"] == h_fl and v["floor"] == h_fl:
                 if point_to_segment_dist(hx, hy, u["x"], u["y"], v["x"], v["y"]) <= (hradius + 20):
-                    pair = [edge["from"], edge["to"]]
-                    if pair not in blocked_edges:
-                        blocked_edges.append(pair)
+                    pair1 = [edge["from"], edge["to"]]
+                    pair2 = [edge["to"], edge["from"]]
+                    if pair1 not in blocked_edges:
+                        blocked_edges.append(pair1)
+                    if pair2 not in blocked_edges:
+                        blocked_edges.append(pair2)
 
     return blocked_nodes, blocked_edges, db_hazards
 
@@ -220,7 +237,7 @@ def calculate_route():
         req_blocked_edges = data.get("blocked_edges")
         req_blocked_nodes = data.get("blocked_nodes")
 
-        blocked_nodes, blocked_edges, _ = get_active_hazard_exclusions(req_blocked_nodes, req_blocked_edges)
+        blocked_nodes, blocked_edges, db_hazards = get_active_hazard_exclusions(req_blocked_nodes, req_blocked_edges)
 
         if target_exit and isinstance(target_exit, str):
             target_exit = [target_exit]
@@ -234,7 +251,10 @@ def calculate_route():
 
         return jsonify({
             "status": "success" if result.get("success") else "error",
-            "result": result
+            "result": result,
+            "blocked_nodes": blocked_nodes,
+            "blocked_edges": blocked_edges,
+            "hazards_count": len(db_hazards)
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -623,8 +643,8 @@ def register_qr_code():
                         graph_model.adjacency[new_nid] = []
                     if closest_nid not in graph_model.adjacency:
                         graph_model.adjacency[closest_nid] = []
-                    graph_model.adjacency[new_nid].append({"node": closest_nid, "weight": w, "type": "corridor"})
-                    graph_model.adjacency[closest_nid].append({"node": new_nid, "weight": w, "type": "corridor"})
+                    graph_model.adjacency[new_nid].append((closest_nid, w, "corridor"))
+                    graph_model.adjacency[closest_nid].append((new_nid, w, "corridor"))
                     graph_model.edges.append({"from": new_nid, "to": closest_nid, "weight": w, "type": "corridor", "bidirectional": True})
 
     if not node_id:

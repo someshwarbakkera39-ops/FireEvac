@@ -716,10 +716,45 @@
       });
 
       document.querySelectorAll(".node-chk").forEach(chk => {
-        chk.addEventListener("change", (e) => {
+        chk.addEventListener("change", async (e) => {
           const nid = chk.getAttribute("data-node");
-          if (e.target.checked) blockedNodes.add(nid);
-          else blockedNodes.delete(nid);
+          const isChecked = e.target.checked;
+          if (isChecked) {
+            blockedNodes.add(nid);
+            // Persist as a structural barricade hazard in backend database
+            if (graphData && graphData.nodes && graphData.nodes[nid]) {
+              const nd = graphData.nodes[nid];
+              try {
+                const resp = await fetch("/api/hazards", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    floor_id: nd.floor,
+                    location_x: nd.x,
+                    location_y: nd.y,
+                    type: "structural",
+                    severity: "critical",
+                    radius: 35.0,
+                    description: `Corridor Barricade at node ${nid}`
+                  })
+                });
+                const j = await resp.json();
+                if (j.status === "success" && j.hazard_id) {
+                  chk.dataset.hazardId = j.hazard_id;
+                }
+              } catch (err) {
+                console.warn("Could not persist barricade:", err);
+              }
+            }
+          } else {
+            blockedNodes.delete(nid);
+            if (chk.dataset.hazardId) {
+              try {
+                await fetch(`/api/hazards/${chk.dataset.hazardId}`, { method: "DELETE" });
+                delete chk.dataset.hazardId;
+              } catch (err) {}
+            }
+          }
           renderer.setHazards(Array.from(blockedNodes), Array.from(blockedEdges));
           previewAdminRoute();
           if (drillSim && drillSim.isRunning) {

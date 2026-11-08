@@ -930,17 +930,37 @@
         return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
       }
 
-      // Synchronize Live Hazards & Fire Overlays
+      // Synchronize Live Hazards & Corridor Gates (Time-to-Time Real-Time Sync)
       let activePublicHazards = [];
-      let lastHazardCount = -1;
-      async function syncPublicHazards() {
+      let currentBlockedNodes = [];
+      let currentBlockedEdges = [];
+      let lastHazardFingerprint = "";
+
+      async function syncPublicHazardsAndPaths() {
         try {
-          const hazResp = await fetch("/api/hazards");
+          const [hazResp, pathResp] = await Promise.all([
+            fetch("/api/hazards"),
+            fetch("/api/paths")
+          ]);
           const hazJson = await hazResp.json();
+          const pathJson = await pathResp.json();
+
           if (hazJson.status === "success") {
             activePublicHazards = hazJson.hazards || [];
             const bNodes = [];
             const bEdges = [];
+
+            // 1. Process Database Blocked Corridor Gates / Fire Doors
+            if (pathJson.status === "success" && pathJson.paths) {
+              pathJson.paths.forEach(p => {
+                if (p.is_blocked) {
+                  bEdges.push(`${p.from_node}--${p.to_node}`);
+                  bEdges.push(`${p.to_node}--${p.from_node}`);
+                }
+              });
+            }
+
+            // 2. Intersect Active Hazards (Fire, Smoke, Debris) against Floor Topology
             if (graphData && graphData.nodes) {
               activePublicHazards.forEach(h => {
                 const hx = parseFloat(h.location_x);
@@ -960,7 +980,7 @@
                     const u = graphData.nodes[e.from];
                     const v = graphData.nodes[e.to];
                     if (u && v && parseInt(u.floor, 10) === hFloor && parseInt(v.floor, 10) === hFloor) {
-                      if (distToSegment(hx, hy, u.x, u.y, v.x, v.y) <= (hRadius + 15)) {
+                      if (distToSegment(hx, hy, u.x, u.y, v.x, v.y) <= (hRadius + 20)) {
                         bEdges.push(`${e.from}--${e.to}`);
                         bEdges.push(`${e.to}--${e.from}`);
                       }
@@ -970,23 +990,34 @@
               });
             }
 
-            renderer.setHazards(bNodes, bEdges, activePublicHazards);
+            currentBlockedNodes = Array.from(new Set(bNodes));
+            currentBlockedEdges = Array.from(new Set(bEdges));
 
-            if (activePublicHazards.length > 0) {
+            renderer.setHazards(currentBlockedNodes, currentBlockedEdges, activePublicHazards);
+
+            // Compute Fingerprint to detect additions, removals, or movements
+            const hazFp = activePublicHazards.map(h => `${h.id}@${h.floor_id}_${h.location_x}_${h.location_y}_${h.radius || 45}`).join(";");
+            const gateFp = currentBlockedEdges.slice().sort().join(",");
+            const currentFingerprint = `${hazFp}:::${gateFp}`;
+
+            const hasActiveDanger = activePublicHazards.length > 0 || currentBlockedEdges.length > 0;
+            if (hasActiveDanger) {
               pubHazardAlertBanner.style.display = "flex";
-              pubHazardAlertText.textContent = `⚠️ Active Incident: ${activePublicHazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted around fire.`;
+              pubHazardAlertText.textContent = `⚠️ Active Incident: ${activePublicHazards.length} hazard zone(s) / barricade(s) reported in Block A. Egress routes dynamically avoiding danger areas.`;
             } else {
               pubHazardAlertBanner.style.display = "none";
             }
 
-            if (lastHazardCount !== -1 && activePublicHazards.length !== lastHazardCount) {
-              calculatePublicRoute();
+            if (lastHazardFingerprint !== "" && currentFingerprint !== lastHazardFingerprint) {
+              if (!isEvacuated) {
+                calculatePublicRoute();
+              }
             }
-            lastHazardCount = activePublicHazards.length;
+            lastHazardFingerprint = currentFingerprint;
             return activePublicHazards;
           }
         } catch (e) {
-          console.warn("Hazard sync note:", e);
+          console.warn("Hazard and path sync note:", e);
         }
         return [];
       }
@@ -1013,7 +1044,7 @@
             pubStatSafe.textContent = `${m.safely_evacuated} Evacuated`;
             pubStatScanned.textContent = `${m.total_scanned}`;
           }
-          await syncPublicHazards();
+          await syncPublicHazardsAndPaths();
           await syncPublicSensors();
         } catch (e) {}
       }
@@ -1385,21 +1416,25 @@
             // Immediately display fire and active hazards on the map
             if (json.hazards) {
               activePublicHazards = json.hazards;
-              renderer.setHazards(json.blocked_nodes || [], json.blocked_edges || [], json.hazards);
-              if (json.hazards.length > 0) {
+              if (json.blocked_nodes) currentBlockedNodes = json.blocked_nodes;
+              if (json.blocked_edges) currentBlockedEdges = (json.blocked_edges || []).map(e => Array.isArray(e) ? `${e[0]}--${e[1]}` : e);
+              renderer.setHazards(currentBlockedNodes, currentBlockedEdges, activePublicHazards);
+              if (json.hazards.length > 0 || currentBlockedEdges.length > 0) {
                 pubHazardAlertBanner.style.display = "flex";
-                pubHazardAlertText.textContent = `⚠️ Active Incident: ${json.hazards.length} hazard zone(s) reported in Block A. Path dynamically rerouted around fire.`;
+                pubHazardAlertText.textContent = `⚠️ Active Incident: ${json.hazards.length} hazard zone(s) / barricade(s) reported in Block A. Path dynamically rerouted around fire.`;
               } else {
                 pubHazardAlertBanner.style.display = "none";
               }
             } else {
-              await syncPublicHazards();
+              await syncPublicHazardsAndPaths();
             }
 
             await syncPublicSensors();
 
             if (json.route && json.route.success) {
               renderPublicRouteResult(json.route);
+            } else if (json.route && !json.route.success) {
+              renderPathBlockedUI(json.route.error);
             } else {
               calculatePublicRoute();
             }
@@ -1442,8 +1477,9 @@
         }
       }
 
-      // Calculate and display public evacuation route
+      // Calculate and display public evacuation route with real-time hazard verification
       async function calculatePublicRoute() {
+        if (isEvacuated) return;
         try {
           const resp = await fetch("/api/route", {
             method: "POST",
@@ -1451,20 +1487,88 @@
             body: JSON.stringify({ start_node: startNodeId })
           });
           const json = await resp.json();
-          if (json.status === "success" && json.result.success) {
+          if (json.status === "success" && json.result && json.result.success) {
+            // Update renderer hazards if returned by backend
+            if (json.blocked_nodes || json.blocked_edges) {
+              currentBlockedNodes = json.blocked_nodes || currentBlockedNodes;
+              currentBlockedEdges = (json.blocked_edges || []).map(e => Array.isArray(e) ? `${e[0]}--${e[1]}` : e);
+              renderer.setHazards(currentBlockedNodes, currentBlockedEdges, activePublicHazards);
+            }
             renderPublicRouteResult(json.result);
           } else {
-            fallbackClientRoute();
+            // Server explicitly returned success: false -> all paths are blocked by fire/gate!
+            const errMsg = (json.result && json.result.error) || json.message || "All egress routes cut off by fire or blocked corridor gates.";
+            renderPathBlockedUI(errMsg);
           }
         } catch (e) {
+          // If network failed entirely, use client-side Dijkstra WITH blocked nodes & edges
           fallbackClientRoute();
         }
       }
 
       function fallbackClientRoute() {
         if (!clientDijkstra) return;
-        const res = clientDijkstra.calculateRoute(startNodeId);
-        if (res.success) renderPublicRouteResult(res);
+        const res = clientDijkstra.calculateRoute(startNodeId, {
+          blockedNodes: currentBlockedNodes,
+          blockedEdges: currentBlockedEdges
+        });
+        if (res && res.success) {
+          renderPublicRouteResult(res);
+        } else {
+          renderPathBlockedUI(res ? res.error : "Egress path compromised.");
+        }
+      }
+
+      function renderPathBlockedUI(errMsg) {
+        renderer.clearRoute();
+        currentNavInstructions = [];
+        currentNavStepIndex = 0;
+
+        if (pubManeuverIcon) {
+          pubManeuverIcon.textContent = "🚫";
+          pubManeuverIcon.style.background = "#dc2626";
+          pubManeuverIcon.style.boxShadow = "0 4px 14px rgba(220, 38, 38, 0.4)";
+        }
+        if (pubInstructionHero) {
+          pubInstructionHero.style.borderLeftColor = "#dc2626";
+          pubInstructionHero.style.background = "#fff1f2";
+        }
+        if (pubStepBadge) {
+          pubStepBadge.textContent = "DANGER: ROUTE BLOCKED";
+          pubStepBadge.style.color = "#dc2626";
+        }
+        if (pubStepDistance) {
+          pubStepDistance.textContent = "BLOCKED";
+          pubStepDistance.style.color = "#dc2626";
+        }
+        if (pubStepTitle) {
+          pubStepTitle.textContent = "🚫 DANGER: CORRIDOR CUT OFF BY FIRE / GATE";
+          pubStepTitle.style.color = "#991b1b";
+        }
+        if (pubStepDesc) {
+          pubStepDesc.textContent = errMsg || "Active fire or closed fire barrier has severed all safe paths from this location. Do NOT enter the corridor. Stay in room, close doors, and await emergency team.";
+          pubStepDesc.style.color = "#7f1d1d";
+        }
+        if (pubSafeExitLbl) pubSafeExitLbl.textContent = "NO SAFE ROUTE FOUND";
+        if (pubDistanceLbl) pubDistanceLbl.textContent = "BLOCKED";
+        if (pubTimeLbl) pubTimeLbl.textContent = "--";
+        if (pubStepProgressLbl) pubStepProgressLbl.textContent = "0/0";
+        if (pubNextStepHintText) pubNextStepHintText.textContent = "⚠️ DO NOT ENTER COMPROMISED HALLWAYS";
+
+        if (pubHazardAlertBanner) {
+          pubHazardAlertBanner.style.display = "flex";
+          pubHazardAlertBanner.style.background = "#fee2e2";
+          pubHazardAlertBanner.style.borderColor = "#ef4444";
+          pubHazardAlertText.textContent = `🚫 IMMEDIATE DANGER: Evacuation path is blocked by active fire or closed gate! Stay in place and signal for rescue.`;
+        }
+
+        if (isVoiceNavEnabled && window.speechSynthesis) {
+          try {
+            window.speechSynthesis.cancel();
+            const ut = new SpeechSynthesisUtterance("Warning: All safe evacuation paths from this location are blocked by fire or closed gates. Do not enter the corridor.");
+            window.speechSynthesis.speak(ut);
+          } catch (e) {}
+        }
       }
 
       function renderPublicRouteResult(res) {
@@ -1472,6 +1576,11 @@
         pubSafeExitLbl.textContent = res.target_exit_name || res.targetExitName || "Safe Exterior Exit";
         pubDistanceLbl.textContent = `${res.distance_meters || res.distanceMeters}m`;
         pubTimeLbl.textContent = `${res.estimated_time_seconds || res.estimatedTimeSeconds}`;
+
+        if (pubInstructionHero) {
+          pubInstructionHero.style.background = "#ffffff";
+          pubInstructionHero.style.borderLeftColor = "#16a34a";
+        }
 
         currentNavInstructions = res.instructions || [];
         currentNavStepIndex = 0;
@@ -1653,12 +1762,18 @@
 
       // Initial execution & URL QR check
       await populateCheckpointsDropdown();
-      await syncPublicHazards();
+      await syncPublicHazardsAndPaths();
       await syncPublicSensors();
       syncPublicOccupancy();
       syncEmergencySystemStatus();
-      setInterval(syncPublicOccupancy, 3500);
+      setInterval(syncPublicOccupancy, 3000);
       setInterval(syncEmergencySystemStatus, 3000);
+      // Continuous periodic route validation to guarantee real-time updates while user is actively using the page
+      setInterval(() => {
+        if (!isEvacuated) {
+          calculatePublicRoute();
+        }
+      }, 4000);
 
       const urlParams = new URLSearchParams(window.location.search);
       const urlQr = urlParams.get("qr");
