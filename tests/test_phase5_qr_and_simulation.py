@@ -7,13 +7,19 @@ import pytest
 import os
 import json
 from app import app
-from database.db import init_db
+from database.db import init_db, execute_db
 from database.seed_data import seed_all
 
 @pytest.fixture(autouse=True)
 def setup_db():
     init_db()
     seed_all()
+    execute_db("DELETE FROM qr_codes WHERE code_id NOT IN ("
+               "'QR_G_ATRIUM', 'QR_G_ADMIN', 'QR_G_CLINIC', 'QR_G_CAFE', 'QR_G_SECURITY', "
+               "'QR_1_FACULTY', 'QR_1_CSLAB', 'QR_1_NETLAB', 'QR_1_BRIDGE', 'QR_1_STAIR_A', "
+               "'QR_2_LECTURE', 'QR_2_SEMINAR', 'QR_2_BRIDGE', 'QR_2_STAIR_A', 'QR_2_STAIR_B', "
+               "'QR_3_LIBRARY', 'QR_3_AILAB', 'QR_3_HPC', 'QR_3_STAIR_A', 'QR_3_STAIR_B', "
+               "'QR_4_BOARDROOM', 'QR_4_AUDITORIUM', 'QR_4_ROOF_EXIT', 'QR_4_STAIR_A', 'QR_4_STAIR_B')")
     yield
 
 def test_qr_image_generation_png_and_svg():

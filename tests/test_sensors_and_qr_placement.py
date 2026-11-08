@@ -10,14 +10,28 @@ from app import app
 from database.db import init_db, execute_db
 from database.seed_data import seed_all
 
+BASE_25_QRS = [
+    'QR_G_ATRIUM', 'QR_G_ADMIN', 'QR_G_CLINIC', 'QR_G_CAFE', 'QR_G_SECURITY',
+    'QR_1_FACULTY', 'QR_1_CSLAB', 'QR_1_NETLAB', 'QR_1_BRIDGE', 'QR_1_STAIR_A',
+    'QR_2_LECTURE', 'QR_2_SEMINAR', 'QR_2_BRIDGE', 'QR_2_STAIR_A', 'QR_2_STAIR_B',
+    'QR_3_LIBRARY', 'QR_3_AILAB', 'QR_3_HPC', 'QR_3_STAIR_A', 'QR_3_STAIR_B',
+    'QR_4_BOARDROOM', 'QR_4_AUDITORIUM', 'QR_4_ROOF_EXIT', 'QR_4_STAIR_A', 'QR_4_STAIR_B'
+]
+
+def clean_custom_state():
+    q_str = ",".join(f"'{q}'" for q in BASE_25_QRS)
+    execute_db("DELETE FROM hazards")
+    execute_db("UPDATE paths SET is_blocked = 0")
+    execute_db(f"DELETE FROM qr_codes WHERE code_id NOT IN ({q_str})")
+    execute_db("DELETE FROM nodes WHERE id LIKE 'NODE_CUSTOM_%'")
+
 @pytest.fixture(autouse=True)
 def setup_db():
     init_db()
     seed_all()
-    # Reset any hazards and ensure clean state
-    execute_db("DELETE FROM hazards")
-    execute_db("UPDATE paths SET is_blocked = 0")
+    clean_custom_state()
     yield
+    clean_custom_state()
 
 def test_qr_placement_blocked_when_system_standby():
     """Verify that QR checkpoints CANNOT be placed when the Emergency System is in Standby mode."""
